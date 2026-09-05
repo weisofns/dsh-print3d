@@ -1,9 +1,12 @@
-import { isAbsolute, join } from 'node:path'
-import { writeFileSync } from 'node:fs'
+import { isAbsolute, join, dirname } from 'node:path'
+import { writeFileSync, mkdirSync } from 'node:fs'
+import { homedir } from 'node:os'
 
-// 解析调用会话的工作区根目录。优先走 DSH 官方的 sandboxPolicy 机制
-// （resolve({ session }).workspaceRoot，与 write 工具同源），
-// 保证落盘到会话工作区，而不是只读的宿主进程 cwd。
+// 固定输出根目录：<用户目录>/Desktop/3Doutput，按类别分文件夹（stl / gcode / preview）。
+const HOME = process.env.USERPROFILE || homedir()
+export const OUTPUT_ROOT = join(HOME, 'Desktop', '3Doutput')
+
+// 解析调用会话的工作区根目录（用于显式 output_path 的相对解析）。
 export function sessionCwd(ctx, exec) {
   const id = exec && exec.agent && exec.agent.id
   const session = ctx.sessions && id ? ctx.sessions.get(id) : undefined
@@ -25,6 +28,23 @@ export function resolveOutputPath(path, cwd) {
   return join(cwd || process.cwd(), path)
 }
 
+// 写文本到 3Doutput/<category>/<filename>（自动建目录），返回绝对路径。
+export function writeToCategory(category, filename, content) {
+  const abs = join(OUTPUT_ROOT, category, filename)
+  mkdirSync(dirname(abs), { recursive: true })
+  writeFileSync(abs, content, 'utf8')
+  return abs
+}
+
+// 写二进制到 3Doutput/<category>/<filename>。
+export function writeBinaryToCategory(category, filename, bytes) {
+  const abs = join(OUTPUT_ROOT, category, filename)
+  mkdirSync(dirname(abs), { recursive: true })
+  writeFileSync(abs, bytes)
+  return abs
+}
+
+// 显式 output_path：写相对工作区（或绝对路径）。
 export function writeTextFile(ctx, exec, relPath, content) {
   const abs = resolveOutputPath(relPath, sessionCwd(ctx, exec))
   writeFileSync(abs, content, 'utf8')

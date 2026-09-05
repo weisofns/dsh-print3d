@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { writeBinaryFile } from './io.js'
+import { writeBinaryFile, writeBinaryToCategory } from './io.js'
 
 const require = createRequire(import.meta.url)
 const { renderGcode } = require('../../scripts/gcode_render.cjs')
@@ -9,7 +9,7 @@ export function makeGcodeRenderTool(ctx) {
     name: 'print3d_gcode_render',
     description:
       '把 G-code 刀路渲染成俯视图 PNG（按 ;TYPE: 上色：红=外墙/内壁、蓝=填充、绿=实心/顶面/桥、橙=裙边、紫=支撑、灰=空驶）。' +
-      '默认以原生图片块返回；也支持传 output_path 直接把 PNG 写入文件。把 .gcode 完整文本作为 gcode_text 传入。',
+      '默认以原生图片块返回，并写入 桌面/3Doutput/preview/；可用 output_path 指定其它路径。把 .gcode 完整文本作为 gcode_text 传入。',
     parameters: {
       type: 'object',
       properties: {
@@ -37,7 +37,11 @@ export function makeGcodeRenderTool(ctx) {
       const result = renderGcode(args.gcode_text, size)
       const bytes = Buffer.from(result.pngBase64, 'base64')
       let outputPath
-      if (args.output_path) outputPath = writeBinaryFile(ctx, exec, args.output_path, bytes)
+      if (args.output_path) {
+        outputPath = writeBinaryFile(ctx, exec, args.output_path, bytes)
+      } else {
+        outputPath = writeBinaryToCategory('preview', `toolpath-${Date.now()}.png`, bytes)
+      }
       let imageRef
       const attachments = ctx.get('attachments')
       if (attachments !== undefined) {

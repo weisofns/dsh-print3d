@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { writeTextFile } from './io.js'
+import { writeTextFile, writeToCategory } from './io.js'
 
 const require = createRequire(import.meta.url)
 const { generate } = require('../../scripts/gen_calibration_gcode.cjs')
@@ -9,7 +9,7 @@ export function makeGenCalibrationGcodeTool(ctx) {
     name: 'print3d_gen_calibration_gcode',
     description:
       '生成可上机的校准件 G-code（Marlin/Klipper 方言）：cube / temp-tower / first-layer / retraction / bridge，自带安全起收尾脚本（升温、结束关加热）。' +
-      '直接写入 .gcode 文件并返回路径；默认文件名为 <part>.gcode，可用 output_path 指定。',
+      '默认写到 桌面/3Doutput/gcode/<part>.gcode；可用 output_path 指定其它路径。',
     parameters: {
       type: 'object',
       properties: {
@@ -34,7 +34,7 @@ export function makeGenCalibrationGcodeTool(ctx) {
         tower_width: { type: 'number', description: 'bridge 塔柱宽 mm（默认 10）。' },
         tower_height: { type: 'number', description: 'bridge 塔柱高 mm（默认 20）。' },
         span: { type: 'number', description: 'bridge 桥跨度 mm（默认 30）。' },
-        output_path: { type: 'string', description: '输出 .gcode 文件路径（绝对，或相对工作区；默认 <part>.gcode）。' },
+        output_path: { type: 'string', description: '输出 .gcode 文件路径（绝对，或相对工作区；默认 桌面/3Doutput/gcode/<part>.gcode）。' },
       },
       required: ['part'],
     },
@@ -65,7 +65,9 @@ export function makeGenCalibrationGcodeTool(ctx) {
         towerHeight: p.tower_height,
         span: p.span,
       })
-      const outputPath = writeTextFile(ctx, exec, output_path || `${result.part}.gcode`, result.gcode)
+      const outputPath = output_path
+        ? writeTextFile(ctx, exec, output_path, result.gcode)
+        : writeToCategory('gcode', `${result.part}.gcode`, result.gcode)
       return { part: result.part, sizeBytes: result.sizeBytes, outputPath }
     },
   }

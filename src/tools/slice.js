@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { existsSync } from 'node:fs'
-import { resolveOutputPath, sessionCwd } from './io.js'
+import { basename, join } from 'node:path'
+import { resolveOutputPath, sessionCwd, OUTPUT_ROOT } from './io.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -28,7 +29,7 @@ export function makeSliceTool(ctx) {
     name: 'print3d_slice',
     description:
       '用 PrusaSlicer 无头模式（prusa-slicer-console --export-gcode）把 STL 切成 G-code。' +
-      '需要本机已安装 PrusaSlicer；未安装时请改用参数化/校准件 G-code 生成工具。',
+      '默认输出到 桌面/3Doutput/gcode/；需要本机已安装 PrusaSlicer，未安装时请改用参数化/校准件 G-code 生成工具。',
     parameters: {
       type: 'object',
       properties: {
@@ -49,7 +50,9 @@ export function makeSliceTool(ctx) {
       const cwd = sessionCwd(ctx, exec)
       const stlAbs = resolveOutputPath(args.stl_path, cwd)
       if (!existsSync(stlAbs)) throw new Error(`print3d_slice: STL 不存在：${stlAbs}`)
-      const outAbs = resolveOutputPath(args.output_path || stlAbs.replace(/\.stl$/i, '.gcode'), cwd)
+      const outAbs = args.output_path
+        ? resolveOutputPath(args.output_path, cwd)
+        : join(OUTPUT_ROOT, 'gcode', basename(stlAbs).replace(/\.stl$/i, '.gcode'))
       const prusa = findPrusaSlicer(args.prusa_slicer)
       if (!prusa) {
         throw new Error('print3d_slice: 未找到 PrusaSlicer。请安装 PrusaSlicer，或用 prusa_slicer 参数指定 prusa-slicer-console.exe 的绝对路径。')
