@@ -8,8 +8,8 @@ export function makeGenCalibrationGcodeTool(ctx) {
   return {
     name: 'print3d_gen_calibration_gcode',
     description:
-      '生成可上机的校准件 G-code（Marlin/Klipper 方言）：cube / temp-tower / first-layer / retraction / bridge。' +
-      '自带安全起收尾脚本（升温、结束关加热）。默认返回 G-code 文本；传 output_path 则直接写入 .gcode 文件。',
+      '生成可上机的校准件 G-code（Marlin/Klipper 方言）：cube / temp-tower / first-layer / retraction / bridge，自带安全起收尾脚本（升温、结束关加热）。' +
+      '直接写入 .gcode 文件并返回路径；默认文件名为 <part>.gcode，可用 output_path 指定。',
     parameters: {
       type: 'object',
       properties: {
@@ -34,17 +34,14 @@ export function makeGenCalibrationGcodeTool(ctx) {
         tower_width: { type: 'number', description: 'bridge 塔柱宽 mm（默认 10）。' },
         tower_height: { type: 'number', description: 'bridge 塔柱高 mm（默认 20）。' },
         span: { type: 'number', description: 'bridge 桥跨度 mm（默认 30）。' },
-        output_path: { type: 'string', description: '可选：直接把 G-code 写入此路径（绝对，或相对工作区）。' },
+        output_path: { type: 'string', description: '输出 .gcode 文件路径（绝对，或相对工作区；默认 <part>.gcode）。' },
       },
       required: ['part'],
     },
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        if (value.outputPath) {
-          return [{ type: 'text', text: `已生成 ${value.part} G-code（${value.sizeBytes} 字节）→ ${value.outputPath}（上机前请人工核对温度/尺寸/固件方言）` }]
-        }
-        return [{ type: 'text', text: value.gcode }]
+        return [{ type: 'text', text: `已生成 ${value.part} G-code（${value.sizeBytes} 字节）→ ${value.outputPath}（上机前请人工核对温度/尺寸/固件方言）` }]
       },
     },
     async execute(args, exec) {
@@ -68,11 +65,8 @@ export function makeGenCalibrationGcodeTool(ctx) {
         towerHeight: p.tower_height,
         span: p.span,
       })
-      if (output_path) {
-        const outputPath = writeTextFile(ctx, exec, output_path, result.gcode)
-        return { part: result.part, sizeBytes: result.sizeBytes, outputPath }
-      }
-      return result
+      const outputPath = writeTextFile(ctx, exec, output_path || `${result.part}.gcode`, result.gcode)
+      return { part: result.part, sizeBytes: result.sizeBytes, outputPath }
     },
   }
 }

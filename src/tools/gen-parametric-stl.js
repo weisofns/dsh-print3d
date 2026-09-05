@@ -8,8 +8,8 @@ export function makeGenParametricStlTool(ctx) {
   return {
     name: 'print3d_gen_parametric_stl',
     description:
-      '生成一个水密的 ASCII STL（参数化基本体：box / cylinder / tube / sphere）。' +
-      '默认返回 STL 文本；传 output_path 则直接写入 .stl 文件（避免把大段文本塞进上下文）。',
+      '生成一个水密的 ASCII STL（box / cylinder / tube / sphere）并直接写入 .stl 文件，返回文件路径。' +
+      '默认文件名为 <shape>.stl；可用 output_path 指定（绝对，或相对工作区）。',
     parameters: {
       type: 'object',
       properties: {
@@ -25,27 +25,21 @@ export function makeGenParametricStlTool(ctx) {
         id: { type: 'number', description: 'tube 的内径 mm（默认 6，须小于 d）。' },
         h: { type: 'number', description: 'cylinder/tube 的高度 mm（默认 30）。' },
         segments: { type: 'number', description: '圆周分段数（默认 cylinder/tube 64，sphere 32）。' },
-        output_path: { type: 'string', description: '可选：直接把 STL 写入此路径（绝对，或相对工作区）。' },
+        output_path: { type: 'string', description: '输出 .stl 文件路径（绝对，或相对工作区；默认 <shape>.stl）。' },
       },
       required: ['shape'],
     },
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        if (value.outputPath) {
-          return [{ type: 'text', text: `已生成 ${value.shape} STL（${value.sizeBytes} 字节）→ ${value.outputPath}` }]
-        }
-        return [{ type: 'text', text: value.stl }]
+        return [{ type: 'text', text: `已生成 ${value.shape} STL（${value.sizeBytes} 字节）→ ${value.outputPath}` }]
       },
     },
     async execute(args, exec) {
       const { output_path, ...params } = args
       const result = generate(params)
-      if (output_path) {
-        const outputPath = writeTextFile(ctx, exec, output_path, result.stl)
-        return { shape: result.shape, sizeBytes: result.sizeBytes, outputPath }
-      }
-      return result
+      const outputPath = writeTextFile(ctx, exec, output_path || `${result.shape}.stl`, result.stl)
+      return { shape: result.shape, sizeBytes: result.sizeBytes, outputPath }
     },
   }
 }

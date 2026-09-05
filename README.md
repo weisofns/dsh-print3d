@@ -14,14 +14,14 @@
 
 | 工具 | 作用 | 输入 → 输出 |
 |---|---|---|
-| `print3d_gen_parametric_stl` | 生成水密 ASCII STL（box/cylinder/tube/sphere），支持 `output_path` 直接落盘 | 参数 → STL 文本 / 文件 |
-| `print3d_gen_calibration_gcode` | 生成校准件 G-code（cube/temp-tower/first-layer/retraction/bridge），支持 `output_path` | 参数 → G-code 文本 / 文件 |
+| `print3d_gen_parametric_stl` | 生成水密 ASCII STL（box/cylinder/tube/sphere），直接落盘 | 参数 → STL 文件 + 路径 |
+| `print3d_gen_calibration_gcode` | 生成校准件 G-code（cube/temp-tower/first-layer/retraction/bridge），直接落盘 | 参数 → G-code 文件 + 路径 |
 | `print3d_stl_analyze` | STL 包围盒/体积/表面积/悬垂/非流形/水密性 | STL 文本 → JSON |
 | `print3d_gcode_estimate` | G-code 打印时间/耗材/层数/温度估算 | G-code 文本 → JSON |
 | `print3d_gcode_render` | 刀路俯视图 PNG（原生图片块），支持 `output_path` | G-code 文本 → 图片块 / PNG 文件 |
 | `print3d_slice` | 桥接本机 PrusaSlicer，把任意 STL 切成 G-code | STL 路径 → G-code 文件 |
 
-工具默认**纯计算**（内容进、结果出）；`output_path` 参数让生成类工具直接把结果写入工作区文件（省去把大段文本塞进上下文），`print3d_slice` 是唯一调用外部进程的工具。
+生成类工具（STL/G-code/PNG）**默认直接落盘**并返回路径，避免把大段文本塞进上下文（对本地小模型尤其重要）；`print3d_stl_analyze`/`print3d_gcode_estimate` 返回 JSON，`print3d_slice` 是唯一调用外部进程的工具。
 
 ### 技能（5 个，注册到全局 skills 注册表）
 
