@@ -21,7 +21,7 @@
 | `print3d_gcode_render` | 刀路俯视图 PNG（原生图片块），支持 `output_path` | G-code 文本 → 图片块 / PNG 文件 |
 | `print3d_slice` | 桥接本机 PrusaSlicer，把任意 STL 切成 G-code | STL 路径 → G-code 文件 |
 
-生成类工具（STL/G-code/PNG）**默认直接落盘**并返回路径，避免把大段文本塞进上下文（对本地小模型尤其重要）；`print3d_stl_analyze`/`print3d_gcode_estimate` 返回 JSON，`print3d_slice` 是唯一调用外部进程的工具。
+生成类工具（STL/G-code/PNG）**默认直接落盘**到 `桌面/3Doutput/`（分 `stl` / `gcode` / `preview` 目录）并返回路径，避免把大段文本塞进上下文（对本地小模型尤其重要）；`print3d_stl_analyze`/`print3d_gcode_estimate` 返回 JSON，`print3d_slice` 是唯一调用外部进程的工具。
 
 ### 技能（5 个，注册到全局 skills 注册表）
 
