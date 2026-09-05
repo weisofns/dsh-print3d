@@ -31,5 +31,8 @@
     "gcode",
     "slicing"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "fflate": "^0.8.2"
+  }
 }

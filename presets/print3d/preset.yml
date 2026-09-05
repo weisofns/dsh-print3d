@@ -1,0 +1,2 @@
+name: 3D 打印工程 Agent
+description: 面向 3D 打印与增材制造的全流程助手：切片参数推荐、G-code 生成、OpenSCAD/参数化建模、STL 与 G-code 分析、打印故障诊断。

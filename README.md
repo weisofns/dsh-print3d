@@ -107,6 +107,14 @@ dsh-print3d/
 2. 新建会话，预设选「3D 打印工程 Agent（本地版）」。
 3. 模型选 `ollama-local / qwen3:8b`（或设为默认）。
 
+## 构建与发布
+
+仓库 = 插件本体 + `presets/`（预设源码）+ 构建脚本。
+
+- **打预设包**：`node build-dshpreset.mjs [preset-id ...]` —— 从 `presets/<id>/` 生成 `<id>-<版本>.dshpreset`（先 `npm install` 装 fflate；不传 id 则构建全部预设）。
+- **打插件包**：`npm pack` —— 生成 `dsh-print3d-<版本>.tgz`。
+- **自动发布**：push `v*` 标签（如 `v0.1.0`）触发 GitHub Actions，自动构建 `.dshpreset` + `.tgz` 并挂到对应 Release。
+
 ## License
 
 [MIT](./LICENSE)

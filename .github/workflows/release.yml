@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build preset bundles (.dshpreset)
+        run: node build-dshpreset.mjs
+
+      - name: Pack plugin tarball (.tgz)
+        run: npm pack
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.dshpreset
+            *.tgz
