@@ -1,0 +1,35 @@
+{
+  "name": "dsh-print3d",
+  "version": "0.1.0",
+  "description": "3D printing & additive manufacturing capabilities for DeepSeek Harness: parametric STL generation, calibration G-code, STL/G-code analysis and toolpath rendering as model tools, plus slicing / modeling / analysis / diagnosis knowledge skills.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "scripts/",
+    "skills/",
+    "cordis.patch.yml",
+    "README.md",
+    "MODULES.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "3d-printing",
+    "additive-manufacturing",
+    "stl",
+    "gcode",
+    "slicing"
+  ],
+  "license": "MIT"
+}

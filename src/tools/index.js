@@ -1,0 +1,17 @@
+import { makeStlAnalyzeTool } from './stl-analyze.js'
+import { makeGenParametricStlTool } from './gen-parametric-stl.js'
+import { makeGenCalibrationGcodeTool } from './gen-calibration-gcode.js'
+import { makeGcodeEstimateTool } from './gcode-estimate.js'
+import { makeGcodeRenderTool } from './gcode-render.js'
+import { makeSliceTool } from './slice.js'
+
+export function makeToolDefinitions(ctx) {
+  return [
+    makeStlAnalyzeTool(ctx),
+    makeGenParametricStlTool(ctx),
+    makeGenCalibrationGcodeTool(ctx),
+    makeGcodeEstimateTool(ctx),
+    makeGcodeRenderTool(ctx),
+    makeSliceTool(ctx),
+  ]
+}
