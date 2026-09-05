@@ -10,11 +10,11 @@ description: Use when creating parametric 3D models via OpenSCAD, or generating 
 ## 助手脚本：直接生成 STL（首选）
 
 ```powershell
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_parametric_stl.js" --shape box --x 20 --y 20 --z 10 --out box.stl
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_parametric_stl.js" --shape cylinder --d 20 --h 30 --segments 64 --out cyl.stl
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_parametric_stl.js" --shape tube --d 20 --id 6 --h 30 --out tube.stl
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_parametric_stl.js" --shape sphere --d 20 --segments 32 --out sphere.stl
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_parametric_stl.js" --list
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_parametric_stl.js" --shape box --x 20 --y 20 --z 10 --out box.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_parametric_stl.js" --shape cylinder --d 20 --h 30 --segments 64 --out cyl.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_parametric_stl.js" --shape tube --d 20 --id 6 --h 30 --out tube.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_parametric_stl.js" --shape sphere --d 20 --segments 32 --out sphere.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_parametric_stl.js" --list
 ```
 
 形状：`box`（长方体）、`cylinder`（圆柱）、`tube`（圆管）、`sphere`（球体）。输出为水密 ASCII STL，可直接切片。复杂组合件：多次生成不同形状的 STL 后，在切片软件里布尔合并，或改用 OpenSCAD。

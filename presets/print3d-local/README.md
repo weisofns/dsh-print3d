@@ -1,6 +1,6 @@
-# 3D 打印工程 Agent（print3d）
+# 3D 打印工程 Agent（print3d-local）
 
-面向 3D 打印与增材制造的全流程助手。预设 id：`print3d`，显示名：**3D 打印工程 Agent**。
+面向 3D 打印与增材制造的全流程助手。预设 id：`print3d-local`，显示名：**3D 打印工程 Agent（本地版）**。
 
 ## 一句话说明
 
@@ -40,13 +40,13 @@
 ```powershell
 # 先确认家目录
 $env:DSH_HOME
-# 脚本路径 = ${DSH_HOME}/.agent-presets/print3d/scripts/<脚本>
+# 脚本路径 = ${DSH_HOME}/.agent-presets/print3d-local/scripts/<脚本>
 ```
 
 ### 1. stl_analyze.js —— STL 分析
 
 ```powershell
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/stl_analyze.js" model.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/stl_analyze.js" model.stl
 ```
 
 输出 JSON：包围盒、三角面数、体积、表面积、悬垂比例、非流形边、水密性。支持 ASCII + 二进制 STL。

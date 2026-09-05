@@ -12,13 +12,13 @@ description: Use when generating, writing, or interpreting 3D printer G-code (Ma
 脚本位于本预设 `scripts/` 目录，用 pwsh 运行（先 `$env:DSH_HOME` 确认家目录）：
 
 ```powershell
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --part cube --size 20 --out cube.gcode
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --part temp-tower --start 220 --end 180 --step 5 --out tower.gcode
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --part first-layer --size 60 --out first.gcode
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --part retraction --out retract.gcode
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --part bridge --out bridge.gcode
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gen_calibration_gcode.js" --list
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gcode_estimate.js" model.gcode [--density 1.24]
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --part cube --size 20 --out cube.gcode
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --part temp-tower --start 220 --end 180 --step 5 --out tower.gcode
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --part first-layer --size 60 --out first.gcode
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --part retraction --out retract.gcode
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --part bridge --out bridge.gcode
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gen_calibration_gcode.js" --list
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gcode_estimate.js" model.gcode [--density 1.24]
 ```
 
 通用参数：`--nozzle 200 --bed 60 --layer-height 0.2 --line-width 0.4 --speed 40`。

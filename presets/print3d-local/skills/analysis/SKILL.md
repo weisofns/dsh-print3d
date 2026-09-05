@@ -8,7 +8,7 @@ description: Use when analyzing a 3D mesh (STL/3MF) for dimensions, volume, surf
 ## STL 分析（零依赖）
 
 ```powershell
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/stl_analyze.js" model.stl
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/stl_analyze.js" model.stl
 ```
 
 输出 JSON：`format`（ascii/binary）、`triangles`、`bounds`（包围盒 min/max/size）、`volume`、`surfaceArea`、`overhangRatio`、`boundaryEdges`、`nonManifoldEdges`、`watertight`。
@@ -24,7 +24,7 @@ node "$env:DSH_HOME/.agent-presets/print3d/scripts/stl_analyze.js" model.stl
 ## G-code 估算
 
 ```powershell
-node "$env:DSH_HOME/.agent-presets/print3d/scripts/gcode_estimate.js" model.gcode [--density 1.24]
+node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/gcode_estimate.js" model.gcode [--density 1.24]
 ```
 
 输出：`estimatedTimeHuman`（匀速近似，实际约 1.1–1.3 倍）、`filamentMM`/`filamentGrams`、`layers`/`layerHeight`、`nozzleTemp`/`bedTemp`（打印期最高温）、`bounds`。
