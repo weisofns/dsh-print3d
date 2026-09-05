@@ -1,17 +1,23 @@
 import { isAbsolute, join } from 'node:path'
 import { writeFileSync } from 'node:fs'
 
-// 从调用会话拿到工作目录（SessionHeader.cwd 是已验证的绝对路径）。
+// 解析调用会话的工作区根目录。优先走 DSH 官方的 sandboxPolicy 机制
+// （resolve({ session }).workspaceRoot，与 write 工具同源），
+// 保证落盘到会话工作区，而不是只读的宿主进程 cwd。
 export function sessionCwd(ctx, exec) {
-  let id = exec && exec.agent && exec.agent.id
-  if (!id) {
-    // exec.agent 可能缺省，回退到当前发起工具调用的 agent
-    const agents = ctx.get ? ctx.get('agents') : undefined
-    const initiator = agents ? agents.currentInitiator() : undefined
-    id = initiator ? initiator.id : undefined
+  const id = exec && exec.agent && exec.agent.id
+  const session = ctx.sessions && id ? ctx.sessions.get(id) : undefined
+  const sandboxPolicy = ctx.get ? ctx.get('sandboxPolicy') : undefined
+  if (sandboxPolicy && typeof sandboxPolicy.resolve === 'function') {
+    try {
+      const policy = session ? sandboxPolicy.resolve({ session }) : sandboxPolicy.resolve({})
+      if (policy && policy.workspaceRoot) return policy.workspaceRoot
+    } catch (_) {
+      // 落到下面的回退
+    }
   }
-  const session = ctx.sessions ? ctx.sessions.get(id) : undefined
-  return session && session.header ? session.header.cwd : undefined
+  if (session && session.header && session.header.cwd) return session.header.cwd
+  return undefined
 }
 
 export function resolveOutputPath(path, cwd) {
