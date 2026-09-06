@@ -1,0 +1,2 @@
+name: 3D 打印工程 Agent（精简版）
+description: 面向本地小模型（Ollama + Qwen3）的超精简 3D 打印助手：只保留打印必需工具（print3d_* 一键打印 + pwsh/fs/skill/ask/todo），去掉 subagent/workflow/web 等干扰项，避免小模型在几十个工具里挑错。
