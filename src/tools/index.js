@@ -4,6 +4,7 @@ import { makeGenCalibrationGcodeTool } from './gen-calibration-gcode.js'
 import { makeGcodeEstimateTool } from './gcode-estimate.js'
 import { makeGcodeRenderTool } from './gcode-render.js'
 import { makeSliceTool } from './slice.js'
+import { makeParametricPrintTool } from './parametric-print.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -13,5 +14,6 @@ export function makeToolDefinitions(ctx) {
     makeGcodeEstimateTool(ctx),
     makeGcodeRenderTool(ctx),
     makeSliceTool(ctx),
+    makeParametricPrintTool(ctx),
   ]
 }

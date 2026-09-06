@@ -24,6 +24,39 @@ function findPrusaSlicer(explicit) {
   return null
 }
 
+// 核心切片逻辑（供 print3d_slice 与 print3d_parametric_print 复用）。
+export async function sliceStl(stlAbs, outAbs, configAbs, prusaPath) {
+  const prusa = findPrusaSlicer(prusaPath)
+  if (!prusa) {
+    throw new Error('print3d_slice: 未找到 PrusaSlicer。请安装 PrusaSlicer，或用 prusa_slicer 参数指定 prusa-slicer-console.exe 的绝对路径。')
+  }
+  const cmdArgs = ['--export-gcode', '--output', outAbs]
+  let configUsed = 'default'
+  if (configAbs && existsSync(configAbs)) {
+    cmdArgs.push('--load', configAbs)
+    configUsed = 'custom'
+  }
+  // 配置文件不存在时忽略，用 PrusaSlicer 默认配置（含通用 PLA）
+  cmdArgs.push(stlAbs)
+  try {
+    const { stdout, stderr } = await execFileAsync(prusa, cmdArgs, {
+      timeout: 300000,
+      maxBuffer: 10 * 1024 * 1024,
+      windowsHide: true,
+    })
+    return {
+      outputPath: outAbs,
+      prusaSlicer: prusa,
+      configUsed,
+      stdoutTail: String(stdout || '').slice(-1500),
+      stderrTail: String(stderr || '').slice(-1500),
+    }
+  } catch (err) {
+    const detail = String(err.stderr || err.message || '').slice(-2000)
+    throw new Error(`print3d_slice: PrusaSlicer 切片失败：${detail}`)
+  }
+}
+
 export function makeSliceTool(ctx) {
   return {
     name: 'print3d_slice',
@@ -54,40 +87,9 @@ export function makeSliceTool(ctx) {
       const outAbs = args.output_path
         ? resolveOutputPath(args.output_path, cwd)
         : join(OUTPUT_ROOT, 'gcode', basename(stlAbs).replace(/\.stl$/i, '.gcode'))
-      const prusa = findPrusaSlicer(args.prusa_slicer)
-      if (!prusa) {
-        throw new Error('print3d_slice: 未找到 PrusaSlicer。请安装 PrusaSlicer，或用 prusa_slicer 参数指定 prusa-slicer-console.exe 的绝对路径。')
-      }
-      const cmdArgs = ['--export-gcode', '--output', outAbs]
-      let configUsed = 'default'
-      if (args.config_path) {
-        const configAbs = resolveOutputPath(args.config_path, cwd)
-        if (existsSync(configAbs)) {
-          cmdArgs.push('--load', configAbs)
-          configUsed = 'custom'
-        }
-        // 配置文件不存在时忽略，用 PrusaSlicer 默认配置
-      }
-      cmdArgs.push(stlAbs)
-      try {
-        const { stdout, stderr } = await execFileAsync(prusa, cmdArgs, {
-          timeout: 300000,
-          maxBuffer: 10 * 1024 * 1024,
-          windowsHide: true,
-        })
-        return {
-          ok: true,
-          outputPath: outAbs,
-          stlPath: stlAbs,
-          prusaSlicer: prusa,
-          configUsed,
-          stdoutTail: String(stdout || '').slice(-1500),
-          stderrTail: String(stderr || '').slice(-1500),
-        }
-      } catch (err) {
-        const detail = String(err.stderr || err.message || '').slice(-2000)
-        throw new Error(`print3d_slice: PrusaSlicer 切片失败：${detail}`)
-      }
+      const configAbs = args.config_path ? resolveOutputPath(args.config_path, cwd) : undefined
+      const sliced = await sliceStl(stlAbs, outAbs, configAbs, args.prusa_slicer)
+      return { ok: true, stlPath: stlAbs, ...sliced }
     },
   }
 }
