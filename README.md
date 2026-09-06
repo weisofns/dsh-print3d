@@ -14,7 +14,7 @@
 
 | 工具 | 作用 | 输入 → 输出 |
 |---|---|---|
-| `print3d_gen_parametric_stl` | 生成水密 ASCII STL（box/cylinder/tube/sphere），直接落盘 | 参数 → STL 文件 + 路径 |
+| `print3d_gen_parametric_stl` | 生成水密 ASCII STL（box/cylinder/tube/sphere/cone/rounded_box/gear），直接落盘 | 参数 → STL 文件 + 路径 |
 | `print3d_gen_calibration_gcode` | 生成校准件 G-code（cube/temp-tower/first-layer/retraction/bridge），直接落盘 | 参数 → G-code 文件 + 路径 |
 | `print3d_stl_analyze` | STL 包围盒/体积/表面积/悬垂/非流形/水密性 | STL 文本 → JSON |
 | `print3d_gcode_estimate` | G-code 打印时间/耗材/层数/温度估算 | G-code 文本 → JSON |

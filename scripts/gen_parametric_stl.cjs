@@ -155,11 +155,116 @@ function sphere(solid, r, seg) {
   }
 }
 
+function cone(solid, r1, r2, h, seg) {
+  const bot = ring(r1, 0, seg);
+  const top = ring(r2, h, seg);
+  if (r1 > 0) disc(solid, [0, 0, 0], bot, false);
+  if (r2 > 0) disc(solid, [0, 0, h], top, true);
+  for (let i = 0; i < seg; i++) {
+    const j = (i + 1) % seg;
+    emit(solid, bot[i], bot[j], top[i]);
+    if (r2 > 0) emit(solid, bot[j], top[j], top[i]);
+  }
+}
+
+function roundedRectOutline(X, Y, r, n) {
+  const x = X / 2 - r, y = Y / 2 - r;
+  const pts = [];
+  const arc = (cx, cy, a0, a1) => {
+    for (let k = 0; k <= n; k++) {
+      const a = a0 + (a1 - a0) * (k / n);
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+  };
+  arc(x, y, 0, Math.PI / 2);                 // 右上
+  arc(-x, y, Math.PI / 2, Math.PI);          // 左上
+  arc(-x, -y, Math.PI, 3 * Math.PI / 2);     // 左下
+  arc(x, -y, 3 * Math.PI / 2, 2 * Math.PI);  // 右下
+  return pts;
+}
+
+function roundedBox(solid, X, Y, Z, r, seg) {
+  const n = Math.max(2, Math.round(seg / 4));
+  const pts2d = roundedRectOutline(X, Y, r, n);
+  const bot = pts2d.map((p) => [p[0], p[1], 0]);
+  const top = pts2d.map((p) => [p[0], p[1], Z]);
+  disc(solid, [0, 0, 0], bot, false);
+  disc(solid, [0, 0, Z], top, true);
+  const N = bot.length;
+  for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N;
+    emit(solid, bot[i], bot[j], top[i]);
+    emit(solid, bot[j], top[j], top[i]);
+  }
+}
+
+function gear(solid, teeth, module, thickness, bore, seg) {
+  const rp = module * teeth / 2;
+  const ra = rp + module;
+  const rr = rp - 1.25 * module;
+  const pitch = 2 * Math.PI / teeth;
+  const tipHalf = pitch * 0.25;
+  const baseHalf = pitch * 0.5;
+  const M = Math.max(24, teeth * 8, Math.round(seg));
+
+  // 梯形齿廓：齿顶(ra) / 斜边 / 齿根(rr)
+  function gearR(a) {
+    let la = a % pitch;
+    if (la < 0) la += pitch;
+    if (la > pitch / 2) la = pitch - la;
+    if (la <= tipHalf) return ra;
+    if (la <= baseHalf) return ra + (rr - ra) * (la - tipHalf) / (baseHalf - tipHalf);
+    return rr;
+  }
+
+  const ob = [], ot = [];
+  for (let j = 0; j < M; j++) {
+    const a = (j / M) * 2 * Math.PI;
+    const R = gearR(a);
+    ob.push([R * Math.cos(a), R * Math.sin(a), 0]);
+    ot.push([R * Math.cos(a), R * Math.sin(a), thickness]);
+  }
+
+  if (bore > 0) {
+    const br = bore / 2;
+    const ib = [], it = [];
+    for (let j = 0; j < M; j++) {
+      const a = (j / M) * 2 * Math.PI;
+      ib.push([br * Math.cos(a), br * Math.sin(a), 0]);
+      it.push([br * Math.cos(a), br * Math.sin(a), thickness]);
+    }
+    for (let i = 0; i < M; i++) {
+      const j = (i + 1) % M;
+      emit(solid, ob[i], ob[j], ib[i]);
+      emit(solid, ob[j], ib[j], ib[i]);
+      emit(solid, ib[i], ib[j], it[j]);
+      emit(solid, ib[i], it[j], it[i]);
+    }
+    for (let i = 0; i < M; i++) {
+      const j = (i + 1) % M;
+      emit(solid, ot[i], it[i], ot[j]);
+      emit(solid, ot[j], it[i], it[j]);
+    }
+  } else {
+    disc(solid, [0, 0, 0], ob, false);
+    disc(solid, [0, 0, thickness], ot, true);
+  }
+
+  for (let i = 0; i < M; i++) {
+    const j = (i + 1) % M;
+    emit(solid, ob[i], ot[i], ob[j]);
+    emit(solid, ob[j], ot[i], ot[j]);
+  }
+}
+
 const SHAPES = {
   box: { args: ['x','y','z'], desc: '长方体（居中，底面 z=0）' },
   cylinder: { args: ['d','h','segments'], desc: '圆柱（轴沿 Z）' },
   tube: { args: ['d','id','h','segments'], desc: '圆管（外径 d，内径 id）' },
   sphere: { args: ['d','segments'], desc: '球体' },
+  cone: { args: ['d1','d2','h','segments'], desc: '圆台/圆锥（d2=0 为圆锥）' },
+  rounded_box: { args: ['x','y','z','r','segments'], desc: '圆角盒（圆角半径 r）' },
+  gear: { args: ['teeth','module','thickness','bore','segments'], desc: '直齿齿轮（梯形齿，简化）' },
 };
 
 // ---------- 进程内入口（参数对象 -> 水密 ASCII STL 文本） ----------
@@ -177,6 +282,21 @@ function generate(params) {
     tube(solid, d, id, num(params.h, 30, 0.1, 'h'), num(params.segments, 64, 3, 'segments'));
   } else if (shape === 'sphere') {
     sphere(solid, num(params.d, 20, 0.1, 'd') / 2, num(params.segments, 32, 3, 'segments'));
+  } else if (shape === 'cone') {
+    const d1 = num(params.d1, 20, 0.1, 'd1');
+    const d2 = num(params.d2, 10, 0, 'd2');
+    cone(solid, d1 / 2, d2 / 2, num(params.h, 30, 0.1, 'h'), num(params.segments, 64, 3, 'segments'));
+  } else if (shape === 'rounded_box') {
+    const X = num(params.x, 20, 0.1, 'x'), Y = num(params.y, 20, 0.1, 'y'), Z = num(params.z, 10, 0.1, 'z');
+    const r = num(params.r, 3, 0.1, 'r');
+    if (r >= Math.min(X, Y) / 2) fail('r（圆角半径）必须小于 min(x,y)/2');
+    roundedBox(solid, X, Y, Z, r, num(params.segments, 64, 3, 'segments'));
+  } else if (shape === 'gear') {
+    const teeth = Math.round(num(params.teeth, 12, 3, 'teeth'));
+    const module = num(params.module, 1, 0.1, 'module');
+    const thickness = num(params.thickness, 5, 0.1, 'thickness');
+    const bore = num(params.bore, 4, 0, 'bore');
+    gear(solid, teeth, module, thickness, bore, num(params.segments, 128, 16, 'segments'));
   }
   solid.push(`endsolid ${shape}`);
   const text = solid.join('\n') + '\n';
@@ -203,4 +323,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { SHAPES, generate, box, cylinder, tube, sphere };
+module.exports = { SHAPES, generate, box, cylinder, tube, sphere, cone, roundedBox, gear };
