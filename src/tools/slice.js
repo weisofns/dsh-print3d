@@ -43,7 +43,8 @@ export function makeSliceTool(ctx) {
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        return [{ type: 'text', text: JSON.stringify(value, null, 2) }]
+        const conf = value.configUsed === 'custom' ? '自定义配置包' : 'PrusaSlicer 默认配置（通用 PLA）'
+        return [{ type: 'text', text: `切片完成（${conf}）→ ${value.outputPath}` }]
       },
     },
     async execute(args, exec) {
@@ -58,7 +59,15 @@ export function makeSliceTool(ctx) {
         throw new Error('print3d_slice: 未找到 PrusaSlicer。请安装 PrusaSlicer，或用 prusa_slicer 参数指定 prusa-slicer-console.exe 的绝对路径。')
       }
       const cmdArgs = ['--export-gcode', '--output', outAbs]
-      if (args.config_path) cmdArgs.push('--load', resolveOutputPath(args.config_path, cwd))
+      let configUsed = 'default'
+      if (args.config_path) {
+        const configAbs = resolveOutputPath(args.config_path, cwd)
+        if (existsSync(configAbs)) {
+          cmdArgs.push('--load', configAbs)
+          configUsed = 'custom'
+        }
+        // 配置文件不存在时忽略，用 PrusaSlicer 默认配置
+      }
       cmdArgs.push(stlAbs)
       try {
         const { stdout, stderr } = await execFileAsync(prusa, cmdArgs, {
@@ -71,6 +80,7 @@ export function makeSliceTool(ctx) {
           outputPath: outAbs,
           stlPath: stlAbs,
           prusaSlicer: prusa,
+          configUsed,
           stdoutTail: String(stdout || '').slice(-1500),
           stderrTail: String(stderr || '').slice(-1500),
         }
