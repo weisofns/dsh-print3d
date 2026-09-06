@@ -115,21 +115,6 @@ dsh-print3d/
 - **打插件包**：`npm pack` —— 生成 `dsh-print3d-<版本>.tgz`。
 - **自动发布**：push `v*` 标签（如 `v0.1.0`）触发 GitHub Actions，自动构建 `.dshpreset` + `.tgz` 并挂到对应 Release。
 
-## 上架插件市场
-
-社区市场 `awesome-dsh-plugin/awesome-dsh-plugin` 靠 PR 收录，投稿文件是一份 YAML，放 `data/plugins/<owner>__<repo>.yml`：
-
-```yaml
-url: https://github.com/<owner>/<repo>
-name: <owner>/<repo>
-category: tools    # 合法值见仓库 data/plugins/ 里的 category 分布
-description:
-  en: '一句话英文简介'
-  zh: '一句话中文简介'
-```
-
-流程：给仓库加 `dsh-plugin` topic（让自动扫描发现）→ fork 市场仓库 → 新建 `add-<owner>-<repo>` 分支 → 放 yml 到 `data/plugins/` → push → 提 PR。本插件已照此提交（`weisofns__dsh-print3d.yml`，分支 `add-weisofns-dsh-print3d`）。
-
 ## License
 
 [MIT](./LICENSE)
