@@ -1,2 +1,0 @@
-name: 3D 打印工程 Agent（本地版）
-description: 面向 3D 打印与增材制造的精简版助手，专为本地小模型（Ollama + Qwen3）优化：简洁 persona、聚焦 print3d_* 工具调用，切片参数推荐、G-code 生成、参数化建模、STL/G-code 分析、打印故障诊断。
