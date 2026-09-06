@@ -29,13 +29,13 @@ export function makeSliceTool(ctx) {
     name: 'print3d_slice',
     description:
       '用 PrusaSlicer 无头模式（prusa-slicer-console --export-gcode）把 STL 切成 G-code。' +
-      '默认输出到 桌面/3Doutput/gcode/；需要本机已安装 PrusaSlicer，未安装时请改用参数化/校准件 G-code 生成工具。',
+      '自动使用 PrusaSlicer 内置默认配置（含通用 PLA 材料），无需单独的材料配置文件；可用 config_path 指定自定义配置包。默认输出到 桌面/3Doutput/gcode/。',
     parameters: {
       type: 'object',
       properties: {
         stl_path: { type: 'string', description: 'STL 文件路径（绝对，或相对工作区）。' },
         output_path: { type: 'string', description: '输出 G-code 路径（默认与 STL 同名 .gcode）。' },
-        config_path: { type: 'string', description: 'PrusaSlicer 配置包 .ini 路径（可选）。' },
+        config_path: { type: 'string', description: '可选：自定义 PrusaSlicer 配置包 .ini 路径（默认用 PrusaSlicer 内置配置，含通用 PLA 材料）。' },
         prusa_slicer: { type: 'string', description: 'prusa-slicer-console 可执行文件路径（可选，默认自动探测）。' },
       },
       required: ['stl_path'],

@@ -7,6 +7,8 @@ description: Use when recommending 3D printing slicing parameters (layer height,
 
 按「材料 + 喷嘴 + 打印机」三个输入，给出一套可直接上机的切片参数。默认前提：**1.75mm 耗材**。
 
+> 注意：本技能用于「调切片参数、给建议」。如果只是把 STL 切成 G-code，直接调用 `print3d_slice` 工具即可——它自动用 PrusaSlicer 内置默认配置（含通用 PLA 材料），**无需材料配置文件**。
+
 ## 输入三要素（缺一先问）
 
 1. 材料（PLA / PETG / ABS / ASA / TPU / Nylon / 碳纤复合等）

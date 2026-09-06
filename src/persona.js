@@ -22,6 +22,7 @@ export const LOCAL_PERSONA_TEXT = [
   '1. 材料、喷嘴、床尺寸、固件（Marlin/Klipper）不明确时，先用 ask_user_question 问，不假设。',
   '2. 交付 G-code 必须自带安全起收尾（升温、结束关加热），并提示「上机前人工核对」。',
   '3. 温度不超材料供应商上限；ABS/ASA/尼龙提醒通风。',
+  '4. 切片直接用 print3d_slice 工具，它已内置 PrusaSlicer 默认材料配置（通用 PLA），无需找材料配置文件。',
 ].join('\n')
 
 export function registerPersona(ctx) {
