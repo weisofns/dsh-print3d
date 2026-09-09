@@ -55,6 +55,7 @@ function estimate(text, density) {
   let eRel = false;   // M83 / G91 相对挤出
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   let nozzleTemp = 0, bedTemp = 0;
+  const nozzleTemps = []; // M104/M109 温度序列（温度梯度，去重连续重复）
   let timeSec = 0;
   let filamentMM = 0;
   let moves = 0, extrusions = 0;
@@ -96,7 +97,13 @@ function estimate(text, density) {
       xyzRel = true; eRel = true;
     }
     const m = t.M;
-    if (m === 104 || m === 109) { if ('S' in t && t.S > nozzleTemp) nozzleTemp = t.S; }
+    if (m === 104 || m === 109) {
+      if ('S' in t && t.S > nozzleTemp) nozzleTemp = t.S;
+      if ('S' in t && t.S > 0) { // 跳过 S0（关加热）
+        const last = nozzleTemps[nozzleTemps.length - 1];
+        if (last !== t.S) nozzleTemps.push(t.S);
+      }
+    }
     else if (m === 140 || m === 190) { if ('S' in t && t.S > bedTemp) bedTemp = t.S; }
     else if (m === 82) { eRel = false; } // M82 绝对挤出
     else if (m === 83) { eRel = true; }  // M83 相对挤出
@@ -126,6 +133,7 @@ function estimate(text, density) {
     layers,
     layerHeight,
     nozzleTemp,
+    nozzleTempSequence: nozzleTemps,
     bedTemp,
     bounds: {
       minX: minX === Infinity ? 0 : +minX.toFixed(2),

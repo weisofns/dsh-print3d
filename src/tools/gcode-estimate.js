@@ -7,7 +7,7 @@ export function makeGcodeEstimateTool(_ctx) {
   return {
     name: 'print3d_gcode_estimate',
     description:
-      '估算 G-code 的打印时间（匀速近似，实际约为 1.1–1.3 倍）、耗材长度/质量、层数/层高与打印期最高温度。' +
+      '估算 G-code 的打印时间（匀速近似，实际约为 1.1–1.3 倍）、耗材长度/质量、层数/层高，以及喷嘴温度（含完整温度序列 nozzleTempSequence，用于检查温度塔的温度梯度）。' +
       '把 .gcode 文件的完整文本作为 gcode_text 传入（先用 read 工具读取文件）。',
     parameters: {
       type: 'object',
