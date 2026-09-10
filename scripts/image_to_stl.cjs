@@ -412,14 +412,25 @@ async function generate(params) {
   } else {
     const px = widthMm / W;
     const depth = num(params.depth_mm, 5, 0.2, 'depth_mm');
+    const base = num(params.base_mm, 0, 0, 'base_mm');
+    if (base >= depth) fail('base_mm（底板厚度）必须小于 depth_mm（总厚度）');
     const thresh = params.threshold === undefined
       ? otsuThreshold(gray, W, H)
       : num(params.threshold, 128, 0, 'threshold');
     const mask = extrudeMask(gray, W, H, thresh, !!params.invert);
-    binaryExtrudeToStl(solid, W, H, mask, px, px, depth);
+    if (base > 0) {
+      // 带底板：整个足迹实心（背景=base，剪影=depth），用高度场网格（文字/图案凸起在底板上）
+      const z = new Float32Array(W * H);
+      for (let i = 0; i < W * H; i++) z[i] = mask[i] ? depth : base;
+      heightMapToStl(solid, W, H, z, px, px);
+      widthOut = (W - 1) * px;
+      heightOut = (H - 1) * px;
+    } else {
+      binaryExtrudeToStl(solid, W, H, mask, px, px, depth);
+      widthOut = W * px;
+      heightOut = H * px;
+    }
     depthMm = depth;
-    widthOut = W * px;
-    heightOut = H * px;
     thresholdUsed = thresh;
   }
 
