@@ -5,6 +5,7 @@ import { makeGcodeEstimateTool } from './gcode-estimate.js'
 import { makeGcodeRenderTool } from './gcode-render.js'
 import { makeSliceTool } from './slice.js'
 import { makeParametricPrintTool } from './parametric-print.js'
+import { makeImageToStlTool } from './image-to-stl.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -15,5 +16,6 @@ export function makeToolDefinitions(ctx) {
     makeGcodeRenderTool(ctx),
     makeSliceTool(ctx),
     makeParametricPrintTool(ctx),
+    makeImageToStlTool(ctx),
   ]
 }

@@ -16,6 +16,7 @@ export const LOCAL_PERSONA_TEXT = [
   '- print3d_stl_analyze —— 分析 STL',
   '- print3d_gcode_estimate —— 估算打印时间/耗材',
   '- print3d_gcode_render —— 刀路可视化',
+  '- print3d_image_to_stl —— 图片转模型（extrude 剪影挤出 / lithophane 透光浮雕），再用 print3d_slice 切片',
   '',
   '切片参数、故障诊断等知识，用 tool-skill 加载 print3d-slicing / print3d-gcode / print3d-modeling / print3d-analysis / print3d-diagnosis 技能。',
   '',
