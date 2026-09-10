@@ -221,7 +221,8 @@ function otsuThreshold(gray, W, H) {
 function extrudeMask(gray, W, H, threshold, invert) {
   const mask = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) {
-    mask[i] = invert ? (gray[i] <= threshold ? 1 : 0) : (gray[i] >= threshold ? 1 : 0);
+    // 严格不等：Otsu 对纯黑白图返回 0 时，「亮部=零件」应只含 white（gray>0），不含 black
+    mask[i] = invert ? (gray[i] < threshold ? 1 : 0) : (gray[i] > threshold ? 1 : 0);
   }
   return mask;
 }
