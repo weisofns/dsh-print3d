@@ -140,7 +140,7 @@ function render(segs, size) {
   const H = Math.max(1, Math.round((h + pad * 2) * scale));
   const img = new Uint8Array(W * H * 3).fill(245); // 白底
   const px = (X) => Math.round((X - minX + pad) * scale);
-  const py = (Y) => Math.round((Y - minY + pad) * scale); // 不翻转：文字/图案按「正读」方向显示
+  const py = (Y) => Math.round((maxY - Y + pad) * scale); // 与 PrusaSlicer 一致：大 Y（床后方）在屏幕上方
 
   for (const s of segs) {
     const [r, g, b] = colorFor(s.type, s.ext);

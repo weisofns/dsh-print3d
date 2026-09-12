@@ -395,7 +395,14 @@ async function generate(params) {
   const mode = params.mode === 'lithophane' ? 'lithophane' : 'extrude';
   const maxPixels = Math.round(num(params.max_pixels, 150, 16, 'max_pixels'));
 
-  const { width: W, height: H, gray, decoder } = await decodeImage(imagePath, maxPixels);
+  const decoded = await decodeImage(imagePath, maxPixels);
+  const W = decoded.width, H = decoded.height, decoder = decoded.decoder;
+  // 垂直翻转行序：让「图片顶部」→ 打印机后方（大 Y）。
+  // PrusaSlicer 视图里大 Y 在屏幕上方，这样文字在切片预览与成品正视时都是正读的（否则会上下颠倒，看起来像镜像）。
+  const gray = new Float32Array(W * H);
+  for (let j = 0; j < H; j++) {
+    gray.set(decoded.gray.subarray((H - 1 - j) * W, (H - 1 - j) * W + W), j * W);
+  }
 
   const widthMm = num(params.width_mm, 60, 1, 'width_mm');
   const solid = [`solid ${mode}`];
