@@ -77,15 +77,128 @@ function sampleView(view, u, v) {
   return mask[row * W + col];
 }
 
+// ---------- 单图三视图切分 ----------
+// 1) 连通域标记  2) 邻近包围盒合并成簇  3) 取最大的三簇  4) 用轴长一致性选出 正/俯/侧 顺序
+function labelComponents(mask, W, H) {
+  const labels = new Int32Array(W * H).fill(-1);
+  const comps = [];
+  const stack = [];
+  for (let start = 0; start < W * H; start++) {
+    if (!mask[start] || labels[start] >= 0) continue;
+    const id = comps.length;
+    let minX = W, maxX = -1, minY = H, maxY = -1, area = 0;
+    labels[start] = id;
+    stack.push(start);
+    while (stack.length) {
+      const p = stack.pop();
+      const x = p % W, y = (p - x) / W;
+      area++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= H) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= W) continue;
+          const q = ny * W + nx;
+          if (mask[q] && labels[q] < 0) { labels[q] = id; stack.push(q); }
+        }
+      }
+    }
+    comps.push({ id, minX, maxX, minY, maxY, area });
+  }
+  return comps;
+}
+
+function clusterBoxes(boxes, gapPx) {
+  const parent = boxes.map((_, i) => i);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[rb] = ra; };
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], b = boxes[j];
+      const gx = Math.max(0, Math.max(a.minX, b.minX) - Math.min(a.maxX, b.maxX));
+      const gy = Math.max(0, Math.max(a.minY, b.minY) - Math.min(a.maxY, b.maxY));
+      if (gx <= gapPx && gy <= gapPx) union(i, j);
+    }
+  }
+  const groups = new Map();
+  for (let i = 0; i < boxes.length; i++) {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(boxes[i]);
+  }
+  return [...groups.values()].map((g) => ({
+    minX: Math.min(...g.map((b) => b.minX)), maxX: Math.max(...g.map((b) => b.maxX)),
+    minY: Math.min(...g.map((b) => b.minY)), maxY: Math.max(...g.map((b) => b.maxY)),
+    area: g.reduce((s, b) => s + b.area, 0),
+    parts: g.length,
+  }));
+}
+
+function cropView(mask, W, H, box) {
+  const w = box.maxX - box.minX + 1, h = box.maxY - box.minY + 1;
+  const m = new Uint8Array(w * h);
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) m[j * w + i] = mask[(box.minY + j) * W + (box.minX + i)];
+  }
+  return { mask: m, W: w, H: h, bbox: { x0: 0, x1: w - 1, y0: 0, y1: h - 1 }, bw: w - 1, bh: h - 1 };
+}
+
+// 正视图 X×Z、俯视图 X×Y、侧视图 Y×Z ⇒
+// 宽度关系: w_front ≈ w_top；高度关系: h_front ≈ h_side；交叉: h_top ≈ w_side
+function scoreAssignment(f, t, s) {
+  const d = (a, b) => Math.abs(a - b) / Math.max(1, Math.max(a, b));
+  return d(f.bw, t.bw) + d(f.bh, s.bh) + d(t.bh, s.bw);
+}
+
+function assignViews(views) {
+  if (views.length !== 3) fail(`切分出 ${views.length} 个视图，需要恰好 3 个。`);
+  const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  let best = null;
+  for (const [a, b, c] of perms) {
+    const score = scoreAssignment(views[a], views[b], views[c]);
+    if (!best || score < best.score) best = { score, front: views[a], top: views[b], side: views[c] };
+  }
+  return best;
+}
+
+async function loadDrawing(filePath, maxPixels, invert, threshold, gapRatio) {
+  if (!fs.existsSync(filePath)) fail('图纸文件不存在：' + filePath);
+  const { width: W, height: H, gray } = await decodeImage(filePath, maxPixels);
+  const t = threshold === undefined ? otsuThreshold(gray, W, H) : Number(threshold);
+  const mask = extrudeMask(gray, W, H, t, !!invert);
+  const comps = labelComponents(mask, W, H);
+  if (comps.length === 0) fail('图纸里找不到任何图形。');
+  const gapPx = Math.round(num(gapRatio, 0.03, 0.001, 'gap_ratio') * Math.max(W, H));
+  const clusters = clusterBoxes(comps, gapPx).sort((a, b) => b.area - a.area);
+  if (clusters.length < 3) {
+    fail(`只切出 ${clusters.length} 个视图（需要 3 个）。可调小 gap_ratio，或确认三视图之间有足够留白。`);
+  }
+  const views = clusters.slice(0, 3).map((box) => cropView(mask, W, H, box));
+  const chosen = assignViews(views);
+  return { ...chosen, gapPx, clusterCount: clusters.length, sourceSize: { W, H } };
+}
+
 // ---------- 体素重建（三视图剪影求交） ----------
 async function reconstruct(params) {
   const maxPixels = Math.round(num(params.max_pixels, 400, 32, 'max_pixels'));
   const invert = !!params.invert;
-  const [front, top, side] = await Promise.all([
-    loadView(params.frontPath, maxPixels, invert, params.threshold),
-    loadView(params.topPath, maxPixels, invert, params.threshold),
-    loadView(params.sidePath, maxPixels, invert, params.threshold),
-  ]);
+  let front, top, side, split = null;
+  if (params.drawingPath) {
+    // 单图模式：自动切分出三视图并选出正/俯/侧顺序
+    split = await loadDrawing(params.drawingPath, maxPixels, invert, params.threshold, params.gap_ratio);
+    front = split.front; top = split.top; side = split.side;
+  } else {
+    [front, top, side] = await Promise.all([
+      loadView(params.frontPath, maxPixels, invert, params.threshold),
+      loadView(params.topPath, maxPixels, invert, params.threshold),
+      loadView(params.sidePath, maxPixels, invert, params.threshold),
+    ]);
+  }
 
   // 物理尺寸：以 X 为准（正视图宽度 = width_mm），另两轴由各视图纵横比得到
   const Xmm = num(params.width_mm, 60, 1, 'width_mm');
@@ -120,7 +233,10 @@ async function reconstruct(params) {
   }
   if (count === 0) fail('三视图交集为空：视图之间可能不对齐或尺寸比例不一致。');
 
-  return { inside, nx, ny, nz, Xmm, Ymm, Zmm, vmm, count, sideRatio, expectRatio, ratioErr };
+  return {
+    inside, nx, ny, nz, Xmm, Ymm, Zmm, vmm, count, sideRatio, expectRatio, ratioErr,
+    splitFrom: split ? { gapPx: split.gapPx, clusterCount: split.clusterCount, assignScore: split.score } : null,
+  };
 }
 
 // ---------- 体素 → 水密 STL ----------
@@ -175,10 +291,17 @@ async function viewsToStl(params) {
 async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
-    if (!args.front || !args.top || !args.side) {
-      fail('用法: node views_to_stl.cjs --front f.png --top t.png --side s.png --width_mm 60 --out m.stl');
+    if (!args.drawing && (!args.front || !args.top || !args.side)) {
+      fail('用法: node views_to_stl.cjs --drawing all.png --width_mm 60 --out m.stl\n' +
+        '   或: node views_to_stl.cjs --front f.png --top t.png --side s.png --width_mm 60 --out m.stl');
     }
-    const r = await viewsToStl({ ...args, frontPath: args.front, topPath: args.top, sidePath: args.side });
+    const r = await viewsToStl({
+      ...args,
+      drawingPath: args.drawing,
+      frontPath: args.front,
+      topPath: args.top,
+      sidePath: args.side,
+    });
     const out = args.out || 'views.stl';
     fs.writeFileSync(out, r.stl, 'utf8');
     console.log(
@@ -196,4 +319,7 @@ async function main() {
 
 if (require.main === module) main();
 
-module.exports = { viewsToStl, reconstruct, loadView, sampleView, voxelsToStl };
+module.exports = {
+  viewsToStl, reconstruct, loadView, sampleView, voxelsToStl,
+  loadDrawing, labelComponents, clusterBoxes, assignViews, cropView,
+};
