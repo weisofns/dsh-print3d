@@ -7,6 +7,7 @@ import { makeSliceTool } from './slice.js'
 import { makeParametricPrintTool } from './parametric-print.js'
 import { makeImageToStlTool } from './image-to-stl.js'
 import { makeVisionDescribeTool } from './vision-describe.js'
+import { makeViewsToModelTool } from './views-to-model.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -19,5 +20,6 @@ export function makeToolDefinitions(ctx) {
     makeParametricPrintTool(ctx),
     makeImageToStlTool(ctx),
     makeVisionDescribeTool(ctx),
+    makeViewsToModelTool(ctx),
   ]
 }
