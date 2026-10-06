@@ -11,7 +11,7 @@ export const LOCAL_PERSONA_TEXT = [
   '能确定的问题用工具算，不要手写代码：',
   '- print3d_parametric_print —— 一键生成模型 + 切片（打印零件用这个）',
   '- print3d_gen_parametric_stl —— 只生成 STL 模型',
-  '- print3d_slice —— 只切片（已有 STL 时用）',
+  '- print3d_slice —— 只切片（已有 STL 时用；slicer=auto/prusa/cura 选后端）',
   '- print3d_gen_calibration_gcode —— 生成校准 G-code',
   '- print3d_stl_analyze —— 分析 STL',
   '- print3d_gcode_estimate —— 估算打印时间/耗材',

@@ -34,26 +34,41 @@ export function makeParametricPrintTool(_ctx) {
         module: { type: 'number', description: 'gear 的模数 mm（默认 1，决定齿大小）。' },
         thickness: { type: 'number', description: 'gear 的厚度 mm（默认 5）。' },
         bore: { type: 'number', description: 'gear 的中心孔径 mm（默认 4，0 为实心）。' },
+        slicer: { type: 'string', enum: ['auto', 'prusa', 'cura'], description: '切片后端：auto（默认，优先 PrusaSlicer）/ prusa / cura。' },
+        cura_engine: { type: 'string', description: 'CuraEngine.exe 路径（用 cura 后端时可选，默认自动探测）。' },
+        filament_diameter: { type: 'number', description: 'Cura：耗材直径 mm（默认 1.75，务必按实际耗材填）。' },
+        layer_height: { type: 'number', description: 'Cura：层高 mm（默认 0.2）。' },
+        nozzle: { type: 'number', description: 'Cura：喷嘴直径 mm（默认 0.4）。' },
+        infill: { type: 'number', description: 'Cura：填充率 %（默认 20）。' },
+        nozzle_temp: { type: 'number', description: 'Cura：喷嘴温度 ℃（默认 200）。' },
+        bed_temp: { type: 'number', description: 'Cura：热床温度 ℃（默认 60，不需要填 0）。' },
+        speed: { type: 'number', description: 'Cura：打印速度 mm/s（默认 50）。' },
+        brim_mm: { type: 'number', description: 'Cura：底边宽度 mm（默认 0=只用一圈 skirt）。' },
       },
       required: ['shape'],
     },
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        const conf = value.configUsed === 'custom' ? '自定义配置' : 'PrusaSlicer 默认配置（通用 PLA）'
-        return [{ type: 'text', text: `已生成并切片 ${value.shape}（${conf}）：STL → ${value.stlPath}；G-code → ${value.gcodePath}` }]
+        const backend = value.slicer === 'cura' ? 'CuraEngine' : (value.configUsed === 'custom' ? 'PrusaSlicer 自定义配置' : 'PrusaSlicer 默认配置（通用 PLA）')
+        return [{ type: 'text', text: `已生成并切片 ${value.shape}（${backend}）：STL → ${value.stlPath}；G-code → ${value.gcodePath}` }]
       },
     },
     async execute(args) {
-      const result = generate(args)
+      const { slicer, cura_engine, prusa_slicer, filament_diameter, layer_height, nozzle, infill, nozzle_temp, bed_temp, speed, brim_mm, ...shapeArgs } = args
+      const result = generate(shapeArgs)
       const stlPath = writeToCategory('stl', `${result.shape}.stl`, result.stl)
       const gcodePath = join(OUTPUT_ROOT, 'gcode', `${result.shape}.gcode`)
-      const sliced = await sliceStl(stlPath, gcodePath, undefined, undefined)
+      const sliced = await sliceStl(stlPath, gcodePath, undefined, prusa_slicer, {
+        slicer, cura_engine, filament_diameter, layer_height, nozzle,
+        infill, nozzle_temp, bed_temp, speed, brim_mm,
+      })
       return {
         shape: result.shape,
         stlPath,
         gcodePath: sliced.outputPath,
         configUsed: sliced.configUsed,
+        slicer: sliced.slicer,
       }
     },
   }

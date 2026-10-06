@@ -76,12 +76,16 @@ function parseGcode(text) {
   return segs;
 }
 
+// 同时兼容 PrusaSlicer 与 Cura 的 ;TYPE: 命名：
+//   PrusaSlicer: Perimeter / External perimeter / Solid infill / Bridge infill / Skirt/Brim / Internal infill
+//   Cura 15.04 : WALL-OUTER / WALL-INNER / SKIN / FILL / SKIRT
+// 顺序要紧：先判 solid/skin（绿）再判 fill（蓝），否则 "Solid infill" 会被误判成稀疏填充。
 function colorFor(type, ext) {
   if (!ext) return [216, 216, 216]; // 空驶浅灰
   if (type.includes('skirt') || type.includes('brim')) return [255, 150, 40];   // 橙
-  if (type.includes('perimeter')) return [232, 60, 50];                          // 红
-  if (type.includes('solid') || type.includes('bridge') || type.includes('gap')) return [40, 180, 90]; // 绿
-  if (type.includes('infill')) return [50, 120, 220];                            // 蓝
+  if (type.includes('perimeter') || type.includes('wall')) return [232, 60, 50]; // 红
+  if (type.includes('solid') || type.includes('bridge') || type.includes('gap') || type.includes('skin')) return [40, 180, 90]; // 绿
+  if (type.includes('infill') || type.includes('fill')) return [50, 120, 220];   // 蓝
   if (type.includes('support')) return [172, 92, 220];                           // 紫
   return [60, 60, 72]; // 默认深灰
 }
@@ -214,4 +218,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseGcode, render, pngEncode, renderGcode };
+module.exports = { parseGcode, render, pngEncode, renderGcode, colorFor };

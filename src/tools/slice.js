@@ -2,34 +2,60 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { existsSync } from 'node:fs'
 import { basename, join } from 'node:path'
+import { createRequire } from 'node:module'
 import { resolveOutputPath, sessionCwd, OUTPUT_ROOT } from './io.js'
+
+const require = createRequire(import.meta.url)
+const { sliceWithCura, findCuraEngine } = require('../../scripts/cura_slice.cjs')
 
 const execFileAsync = promisify(execFile)
 
-const PRUSA_CANDIDATES = [
+const PRUSA_ABS = [
   'C:/Program Files/Prusa3D/PrusaSlicer/prusa-slicer-console.exe',
   'C:/Program Files (x86)/Prusa3D/PrusaSlicer/prusa-slicer-console.exe',
-  'prusa-slicer-console',
 ]
 
 function findPrusaSlicer(explicit) {
   if (explicit) return explicit
-  for (const candidate of PRUSA_CANDIDATES) {
-    if (candidate.includes('/') || candidate.includes('\\')) {
-      if (existsSync(candidate)) return candidate
-    } else {
-      return candidate // 交给 PATH 解析
-    }
+  for (const c of PRUSA_ABS) {
+    if (existsSync(c)) return c
   }
+  return 'prusa-slicer-console' // 交给 PATH 解析
+}
+
+function prusaAvailable(explicit) {
+  if (explicit) return existsSync(explicit)
+  return PRUSA_ABS.some((c) => existsSync(c))
+}
+
+// 后端选择：auto 优先 PrusaSlicer（配置体系更完整），没有则用 Cura。
+function resolveBackend(want, prusaPath, curaEngine) {
+  if (want === 'prusa' || want === 'cura') return want
+  if (prusaAvailable(prusaPath)) return 'prusa'
+  if (findCuraEngine(curaEngine)) return 'cura'
   return null
 }
 
 // 核心切片逻辑（供 print3d_slice 与 print3d_parametric_print 复用）。
-export async function sliceStl(stlAbs, outAbs, configAbs, prusaPath) {
-  const prusa = findPrusaSlicer(prusaPath)
-  if (!prusa) {
-    throw new Error('print3d_slice: 未找到 PrusaSlicer。请安装 PrusaSlicer，或用 prusa_slicer 参数指定 prusa-slicer-console.exe 的绝对路径。')
+// opts 透传给 Cura 后端：slicer / cura_engine / layer_height / filament_diameter /
+// nozzle / infill / nozzle_temp / bed_temp / speed / travel_speed / walls / top_bottom_layers / brim_mm
+export async function sliceStl(stlAbs, outAbs, configAbs, prusaPath, opts = {}) {
+  const backend = resolveBackend(opts.slicer || 'auto', prusaPath, opts.cura_engine)
+  if (!backend) {
+    throw new Error(
+      'print3d_slice: 未找到可用切片器。\n' +
+      '  PrusaSlicer：' + PRUSA_ABS.join('  或  ') + '\n' +
+      '  CuraEngine：C:/Program Files (x86)/Cura_15.04/CuraEngine.exe\n' +
+      '可用 prusa_slicer / cura_engine 参数指定可执行文件绝对路径。',
+    )
   }
+
+  if (backend === 'cura') {
+    const r = await sliceWithCura(stlAbs, outAbs, opts)
+    return { ...r, slicer: 'cura', configUsed: 'cura-engine-defaults' }
+  }
+
+  const prusa = findPrusaSlicer(prusaPath)
   const cmdArgs = ['--export-gcode', '--output', outAbs]
   let configUsed = 'default'
   if (configAbs && existsSync(configAbs)) {
@@ -46,6 +72,7 @@ export async function sliceStl(stlAbs, outAbs, configAbs, prusaPath) {
     })
     return {
       outputPath: outAbs,
+      slicer: 'prusa',
       prusaSlicer: prusa,
       configUsed,
       stdoutTail: String(stdout || '').slice(-1500),
@@ -61,21 +88,42 @@ export function makeSliceTool(ctx) {
   return {
     name: 'print3d_slice',
     description:
-      '用 PrusaSlicer 无头模式（prusa-slicer-console --export-gcode）把 STL 切成 G-code。' +
-      '自动使用 PrusaSlicer 内置默认配置（含通用 PLA 材料），无需单独的材料配置文件；可用 config_path 指定自定义配置包。默认输出到 桌面/3Doutput/gcode/。',
+      '把 STL 切成 G-code，支持两个后端（slicer 参数选，默认 auto）：' +
+      'prusa＝PrusaSlicer 无头模式（prusa-slicer-console --export-gcode，用内置默认配置含通用 PLA）；' +
+      'cura＝CuraEngine（已适配 Cura 15.04/Cura_SteamEngine，参数由下方 Cura 项控制）。' +
+      'Cura 后端注意：filament_diameter 默认按 1.75mm，与实际耗材不符会直接导致挤出量错误，务必核对；' +
+      '其 G-code 自带完整起收尾（升温/等温/结束关加热）。默认输出到 桌面/3Doutput/gcode/。',
     parameters: {
       type: 'object',
       properties: {
         stl_path: { type: 'string', description: 'STL 文件路径（绝对，或相对工作区）。' },
         output_path: { type: 'string', description: '输出 G-code 路径（默认与 STL 同名 .gcode）。' },
-        config_path: { type: 'string', description: '可选：自定义 PrusaSlicer 配置包 .ini 路径（默认用 PrusaSlicer 内置配置，含通用 PLA 材料）。' },
+        slicer: { type: 'string', enum: ['auto', 'prusa', 'cura'], description: '切片后端：auto（默认，优先 PrusaSlicer）/ prusa / cura。' },
+        config_path: { type: 'string', description: '可选：自定义 PrusaSlicer 配置包 .ini 路径（仅 prusa 后端）。' },
         prusa_slicer: { type: 'string', description: 'prusa-slicer-console 可执行文件路径（可选，默认自动探测）。' },
+        cura_engine: { type: 'string', description: 'CuraEngine.exe 路径（可选，默认自动探测 Cura 15.04）。' },
+
+        layer_height: { type: 'number', description: 'Cura：层高 mm（默认 0.2）。' },
+        first_layer_height: { type: 'number', description: 'Cura：首层厚 mm（默认 0.3）。' },
+        filament_diameter: { type: 'number', description: 'Cura：耗材直径 mm（默认 1.75；老 Cura 官方默认是 2.85，务必按实际耗材填）。' },
+        nozzle: { type: 'number', description: 'Cura：喷嘴直径 mm（默认 0.4，决定挤出宽度）。' },
+        infill: { type: 'number', description: 'Cura：填充率 %（默认 20）。' },
+        nozzle_temp: { type: 'number', description: 'Cura：喷嘴温度 ℃（默认 200）。' },
+        bed_temp: { type: 'number', description: 'Cura：热床温度 ℃（默认 60，不需要热床填 0）。' },
+        speed: { type: 'number', description: 'Cura：打印速度 mm/s（默认 50）。' },
+        travel_speed: { type: 'number', description: 'Cura：空驶速度 mm/s（默认 120）。' },
+        walls: { type: 'number', description: 'Cura：墙数（默认 2）。' },
+        top_bottom_layers: { type: 'number', description: 'Cura：顶/底实心层数（默认 3）。' },
+        brim_mm: { type: 'number', description: 'Cura：底边宽度 mm（默认 0=只用一圈 skirt）。' },
       },
       required: ['stl_path'],
     },
     output: {
       schema: { type: 'object' },
       render(_args, value) {
+        if (value.slicer === 'cura') {
+          return [{ type: 'text', text: `切片完成（CuraEngine 15.04 风格参数）→ ${value.outputPath}` }]
+        }
         const conf = value.configUsed === 'custom' ? '自定义配置包' : 'PrusaSlicer 默认配置（通用 PLA）'
         return [{ type: 'text', text: `切片完成（${conf}）→ ${value.outputPath}` }]
       },
@@ -88,7 +136,8 @@ export function makeSliceTool(ctx) {
         ? resolveOutputPath(args.output_path, cwd)
         : join(OUTPUT_ROOT, 'gcode', basename(stlAbs).replace(/\.stl$/i, '.gcode'))
       const configAbs = args.config_path ? resolveOutputPath(args.config_path, cwd) : undefined
-      const sliced = await sliceStl(stlAbs, outAbs, configAbs, args.prusa_slicer)
+      const { stl_path, output_path, config_path, ...opts } = args
+      const sliced = await sliceStl(stlAbs, outAbs, configAbs, args.prusa_slicer, opts)
       return { ok: true, stlPath: stlAbs, ...sliced }
     },
   }

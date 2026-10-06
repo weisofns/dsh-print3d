@@ -18,7 +18,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { parseGcode, pngEncode } = require('./gcode_render.cjs');
+const { parseGcode, pngEncode, colorFor } = require('./gcode_render.cjs');
 
 function fail(msg) { throw new Error('gcode_map: ' + msg); }
 
@@ -105,30 +105,25 @@ function drawNumber(cv, x, y, n, color, scale) {
   }
 }
 
-// ---------- 颜色（与 gcode_render 保持一致） ----------
-function colorFor(type, ext) {
-  if (!ext) return [222, 222, 226];
-  if (type.includes('skirt') || type.includes('brim')) return [255, 150, 40];
-  if (type.includes('perimeter')) return [232, 60, 50];
-  if (type.includes('solid') || type.includes('bridge') || type.includes('gap')) return [40, 180, 90];
-  if (type.includes('infill')) return [50, 120, 220];
-  if (type.includes('support')) return [172, 92, 220];
-  return [70, 70, 84];
-}
-
 // ---------- 层切分 ----------
 function splitLayers(segs) {
-  const layers = [];
+  const raw = [];
   let cur = null, start = 0;
   for (let i = 0; i < segs.length; i++) {
     const z = Math.round(segs[i].z * 1000) / 1000;
     if (cur === null || z !== cur) {
-      if (cur !== null) layers.push({ z: cur, start, end: i });
+      if (cur !== null) raw.push({ z: cur, start, end: i });
       cur = z; start = i;
     }
   }
-  if (cur !== null) layers.push({ z: cur, start, end: segs.length });
-  return layers;
+  if (cur !== null) raw.push({ z: cur, start, end: segs.length });
+  // 只保留真正有挤出的层：起始/结束代码里的抬升（如 Cura 的 "G1 Z15.0"）只是空移动，不构成层
+  return raw.filter((L) => {
+    for (let i = L.start; i < L.end; i++) {
+      if (segs[i].ext) return true;
+    }
+    return false;
+  });
 }
 
 // ---------- 投影器：把世界坐标映射到面板像素 ----------
