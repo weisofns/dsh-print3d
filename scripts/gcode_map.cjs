@@ -229,10 +229,10 @@ function buildToolpathMap(text, opts = {}) {
   const mark = [92, 97, 108];
 
   const panels = [
-    { key: 'overview', proj: 'xy', segs, index: 1 },
-    { key: 'side', proj: 'xz', segs: [], index: 2 },
-    { key: 'first', proj: 'xy', segs: segs.slice(first.start, first.end), index: 3 },
-    { key: 'top', proj: 'xy', segs: segs.slice(last.start, last.end), index: 4 },
+    { key: 'overview', label: '俯视全览', proj: 'xy', segs, index: 1 },
+    { key: 'side', label: '侧视轮廓', proj: 'xz', segs: [], index: 2 },
+    { key: 'first', label: '首层', proj: 'xy', segs: segs.slice(first.start, first.end), index: 3 },
+    { key: 'top', label: '顶层', proj: 'xy', segs: segs.slice(last.start, last.end), index: 4 },
   ];
 
   for (let p = 0; p < panels.length; p++) {
