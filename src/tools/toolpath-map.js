@@ -72,19 +72,31 @@ export function makeToolpathMapTool(ctx) {
           // 附件存储不可用时退化为 base64
         }
       }
-      // undefined 不是合法 JSON，直接挂上去会让工具返回值校验失败
-      // （"value is not lossless JSON"）。只挂确实有值的字段。
-      const out = {
+      // 返回值必须是 lossless JSON：undefined、NaN、Infinity 任何一个都会让 DSH
+      // 的返回值校验拒绝整次调用（"value is not lossless JSON"），而报错不告诉你是哪个
+      // 字段。统一净化一遍，避免某个统计字段算出非有限数就炸掉整个工具。
+      const clean = (v) => {
+        if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+        if (Array.isArray(v)) return v.map(clean)
+        if (v && typeof v === 'object') {
+          const o = {}
+          for (const k of Object.keys(v)) {
+            if (v[k] !== undefined) o[k] = clean(v[k])
+          }
+          return o
+        }
+        return v
+      }
+      return clean({
         image: result.image,
         source,
         stats: result.stats,
         legend: result.legend,
         panels: result.panels,
         outputPath,
-      }
-      if (imageRef) out.imageRef = imageRef
-      else out.pngBase64 = bytes.toString('base64')
-      return out
+        imageRef,
+        pngBase64: imageRef ? undefined : bytes.toString('base64'),
+      })
     },
   }
 }
