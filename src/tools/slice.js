@@ -87,8 +87,28 @@ export async function sliceStl(stlAbs, outAbs, configAbs, prusaPath, opts = {}) 
   if (configAbs && existsSync(configAbs)) {
     cmdArgs.push('--load', configAbs)
     configUsed = 'custom'
+  } else {
+    // 没有自定义配置包时，用打印机配置（printer.json）做命令行覆盖。
+    // 不覆盖的话 PrusaSlicer 会用它自己的内置默认（层高 0.35/0.3、床温 0），
+    // 「窗口里设的」与「实际切的」就对不上 —— 这一点是实测发现的。
+    const add = (flag, v, suffix = '') => {
+      if (v === undefined || v === null || v === '') return
+      cmdArgs.push(flag, `${v}${suffix}`)
+    }
+    add('--layer-height', opts.layer_height)
+    add('--first-layer-height', opts.first_layer_height)
+    add('--temperature', opts.nozzle_temp)
+    add('--bed-temperature', opts.bed_temp)
+    add('--fill-density', opts.infill, '%')
+    add('--filament-diameter', opts.filament_diameter)
+    add('--nozzle-diameter', opts.nozzle)
+    add('--perimeters', opts.walls)
+    add('--top-solid-layers', opts.top_bottom_layers)
+    add('--bottom-solid-layers', opts.top_bottom_layers)
+    add('--brim-width', opts.brim_mm)
+    add('--travel-speed', opts.travel_speed)
+    if (cmdArgs.length > 3) configUsed = 'profile'
   }
-  // 配置文件不存在时忽略，用 PrusaSlicer 默认配置（含通用 PLA）
   cmdArgs.push(stlAbs)
   try {
     const { stdout, stderr } = await execFileAsync(prusa, cmdArgs, {

@@ -72,16 +72,19 @@ export function makeToolpathMapTool(ctx) {
           // 附件存储不可用时退化为 base64
         }
       }
-      return {
+      // undefined 不是合法 JSON，直接挂上去会让工具返回值校验失败
+      // （"value is not lossless JSON"）。只挂确实有值的字段。
+      const out = {
         image: result.image,
         source,
         stats: result.stats,
         legend: result.legend,
         panels: result.panels,
         outputPath,
-        imageRef,
-        pngBase64: imageRef ? undefined : bytes.toString('base64'),
       }
+      if (imageRef) out.imageRef = imageRef
+      else out.pngBase64 = bytes.toString('base64')
+      return out
     },
   }
 }
