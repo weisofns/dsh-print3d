@@ -271,7 +271,7 @@
     searchTimeoutMs: 60000
 
 # ── 3D 打印工具集闸门 ────────────────────────────────────────────────────────
-# 本地模型的能力有限，看不到全部 12 个 print3d 工具，只留核心集。
+# 本地模型的能力有限，看不到全部 14 个 print3d 工具，只留核心集。
 # 用 DSH 的 ctx.tools.restrict：清单外的全局工具对本 preset 下的 agent 直接
 # 不可见 —— 模型根本看不到，就不会去瞎试（比在 persona 里写禁令可靠）。
 # 要放开工具就往 allow 里加名字；改成空数组则退回全量工具。
@@ -279,6 +279,7 @@
   name: 'dsh-print3d/gate'
   config:
     allow:
+      - print3d_diagnose_print
       - print3d_parametric_print
       - print3d_image_to_stl
       - print3d_views_to_model

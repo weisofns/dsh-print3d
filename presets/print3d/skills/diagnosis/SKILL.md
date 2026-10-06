@@ -51,6 +51,7 @@ description: Use when diagnosing 3D printing failures — warping, poor adhesion
 
 ## 诊断流程
 
+0. 优先直接用 `print3d_diagnose_print`（照片 `image_path` 或口述 `symptoms` + 材料/温度/速度/保温），它会按本表给出排序疑因与修复；命令行等价物是插件的 `scripts/print_diagnosis.cjs`。
 1. 明确症状（可让用户发照片描述）。
 2. 确认材料 + 当前温度/速度/层高。
 3. 从表里给出**按概率排序**的 2–3 个原因与对应动作。

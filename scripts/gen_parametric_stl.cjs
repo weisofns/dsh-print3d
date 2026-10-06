@@ -90,7 +90,8 @@ function box(solid, X, Y, Z) {
     [2,6,7],[2,7,3],   // 后
     [3,7,4],[3,4,0],   // 左
   ];
-  for (const [a,b,c] of f) emit(solid, v[a], v[b], v[c]);
+  // emit(a, c, b)：上面的面表按「法线朝内」写的，交换后两个顶点才是朝外绕序
+  for (const [a,b,c] of f) emit(solid, v[a], v[c], v[b]);
 }
 
 function cylinder(solid, r, h, seg) {
@@ -108,25 +109,25 @@ function cylinder(solid, r, h, seg) {
 function tube(solid, ro, ri, h, seg) {
   const ob = ring(ro, 0, seg), ot = ring(ro, h, seg);
   const ib = ring(ri, 0, seg), it = ring(ri, h, seg);
-  // 底面环形（外向下、内向下）
+  // 以下每组都按朝外绕序写：底面环形（外向下、内向下）
   for (let i = 0; i < seg; i++) {
     const j = (i + 1) % seg;
-    emit(solid, ob[i], ob[j], ib[i]);
-    emit(solid, ob[j], ib[j], ib[i]);
-    emit(solid, ib[i], ib[j], it[j]);  // 内壁
-    emit(solid, ib[i], it[j], it[i]);
+    emit(solid, ob[i], ib[i], ob[j]);
+    emit(solid, ob[j], ib[i], ib[j]);
+    emit(solid, ib[i], it[j], ib[j]);  // 内壁（法线朝轴心）
+    emit(solid, ib[i], it[i], it[j]);
   }
   // 顶面环形
   for (let i = 0; i < seg; i++) {
     const j = (i + 1) % seg;
-    emit(solid, ot[i], it[i], ot[j]);
-    emit(solid, ot[j], it[i], it[j]);
+    emit(solid, ot[i], ot[j], it[i]);
+    emit(solid, ot[j], it[j], it[i]);
   }
   // 外壁
   for (let i = 0; i < seg; i++) {
     const j = (i + 1) % seg;
-    emit(solid, ob[i], ot[i], ob[j]);
-    emit(solid, ob[j], ot[i], ot[j]);
+    emit(solid, ob[i], ob[j], ot[i]);
+    emit(solid, ob[j], ot[j], ot[i]);
   }
 }
 
@@ -149,8 +150,8 @@ function sphere(solid, r, seg) {
     for (let j = 0; j < seg; j++) {
       const k = (j + 1) % seg;
       const a = pts[i][j], b = pts[i][k], c = pts[i+1][j], d = pts[i+1][k];
-      emit(solid, a, b, c);
-      emit(solid, b, d, c);
+      emit(solid, a, c, b); // 朝外绕序（原为朝内）
+      emit(solid, b, c, d);
     }
   }
 }
@@ -235,25 +236,26 @@ function gear(solid, teeth, module, thickness, bore, seg) {
     }
     for (let i = 0; i < M; i++) {
       const j = (i + 1) % M;
-      emit(solid, ob[i], ob[j], ib[i]);
-      emit(solid, ob[j], ib[j], ib[i]);
-      emit(solid, ib[i], ib[j], it[j]);
-      emit(solid, ib[i], it[j], it[i]);
+      emit(solid, ob[i], ib[i], ob[j]);
+      emit(solid, ob[j], ib[i], ib[j]);
+      emit(solid, ib[i], it[j], ib[j]);
+      emit(solid, ib[i], it[i], it[j]);
     }
     for (let i = 0; i < M; i++) {
       const j = (i + 1) % M;
-      emit(solid, ot[i], it[i], ot[j]);
-      emit(solid, ot[j], it[i], it[j]);
+      emit(solid, ot[i], ot[j], it[i]);
+      emit(solid, ot[j], it[j], it[i]);
     }
   } else {
     disc(solid, [0, 0, 0], ob, false);
     disc(solid, [0, 0, thickness], ot, true);
   }
 
+  // 外壁：与圆柱同一套朝外绕序（原为朝内，且与上下端面不一致）
   for (let i = 0; i < M; i++) {
     const j = (i + 1) % M;
-    emit(solid, ob[i], ot[i], ob[j]);
-    emit(solid, ob[j], ot[i], ot[j]);
+    emit(solid, ob[i], ob[j], ot[i]);
+    emit(solid, ob[j], ot[j], ot[i]);
   }
 }
 

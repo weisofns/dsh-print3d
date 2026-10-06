@@ -11,14 +11,15 @@ description: Use when analyzing a 3D mesh (STL/3MF) for dimensions, volume, surf
 node "$env:DSH_HOME/.agent-presets/print3d-local/scripts/stl_analyze.js" model.stl
 ```
 
-输出 JSON：`format`（ascii/binary）、`triangles`、`bounds`（包围盒 min/max/size）、`volume`、`surfaceArea`、`overhangRatio`、`boundaryEdges`、`nonManifoldEdges`、`watertight`。
+输出 JSON：`format`（ascii/binary）、`triangles`、`bounds`（包围盒 min/max/size）、`volume`、`normalsInverted`、`surfaceArea`、`overhangRatio`、`boundaryEdges`、`nonManifoldEdges`、`watertight`。
 
 ### 指标判读
 
 - **watertight（水密）**：`boundaryEdges === 0`。有边界边 = 有洞，切片可能出问题，需修复（MeshLab / 微软 3D Builder / Netfabb）。
 - **nonManifoldEdges > 0**：存在三条以上面共享的边，模型非法，需修复。
 - **volume**：水密时才有物理意义（单位 mm³）。非水密时仅作参考。
-- **overhangRatio**：法线向下倾角 >45° 的面占表面积比例。>0.1 说明悬垂较多，需支撑或降层高。
+- **overhangRatio**：真实朝外法线向下倾角 >45° 的面占表面积比例。>0.1 说明悬垂较多，需支撑或降层高。判定前会先用有符号体积把朝向归一化，所以「绕序朝内」的 STL 也算得对。
+- **normalsInverted**：`true` 表示该 STL 绕序朝内（法线指向模型内部）。体积与水密性不受影响，切片器一般会自动修复；但别的软件按法线渲染/判悬垂会反，需要先翻转法线（Netfabb / MeshLab / 切片器修复）。
 - **bounds.size**：三个维度尺寸（mm），核对是否超出打印机行程、是否符合期望。
 
 ## G-code 估算

@@ -264,15 +264,16 @@ function voxelsToStl(solid, nx, ny, nz, inside, vs) {
           [x, y, z], [x + vs, y, z], [x + vs, y + vs, z], [x, y + vs, z],
           [x, y, z + vs], [x + vs, y, z + vs], [x + vs, y + vs, z + vs], [x, y + vs, z + vs],
         ];
+        // 每个面都按「朝外绕序」发射（旧版本全反，模型绕序朝内）
         // 底 -z / 顶 +z
-        if (!isIn(i, j, k - 1)) { emit(solid, c[0], c[1], c[2]); emit(solid, c[0], c[2], c[3]); }
-        if (!isIn(i, j, k + 1)) { emit(solid, c[4], c[6], c[5]); emit(solid, c[4], c[7], c[6]); }
+        if (!isIn(i, j, k - 1)) { emit(solid, c[0], c[2], c[1]); emit(solid, c[0], c[3], c[2]); }
+        if (!isIn(i, j, k + 1)) { emit(solid, c[4], c[5], c[6]); emit(solid, c[4], c[6], c[7]); }
         // 前 -y / 后 +y
-        if (!isIn(i, j - 1, k)) { emit(solid, c[0], c[4], c[5]); emit(solid, c[0], c[5], c[1]); }
-        if (!isIn(i, j + 1, k)) { emit(solid, c[2], c[6], c[7]); emit(solid, c[2], c[7], c[3]); }
+        if (!isIn(i, j - 1, k)) { emit(solid, c[0], c[5], c[4]); emit(solid, c[0], c[1], c[5]); }
+        if (!isIn(i, j + 1, k)) { emit(solid, c[2], c[7], c[6]); emit(solid, c[2], c[3], c[7]); }
         // 左 -x / 右 +x
-        if (!isIn(i - 1, j, k)) { emit(solid, c[3], c[7], c[4]); emit(solid, c[3], c[4], c[0]); }
-        if (!isIn(i + 1, j, k)) { emit(solid, c[1], c[5], c[6]); emit(solid, c[1], c[6], c[2]); }
+        if (!isIn(i - 1, j, k)) { emit(solid, c[3], c[4], c[7]); emit(solid, c[3], c[0], c[4]); }
+        if (!isIn(i + 1, j, k)) { emit(solid, c[1], c[6], c[5]); emit(solid, c[1], c[2], c[6]); }
       }
     }
   }

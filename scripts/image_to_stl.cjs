@@ -338,31 +338,33 @@ function binaryExtrudeToStl(solid, W, H, mask, px, py, depth) {
         v(i + 1, j + 1, depth), // 6 max-x,max-y,top
         v(i, j + 1, depth),     // 7 min-x,max-y,top
       ];
+      // 注意：每个面的顶点顺序都是「朝外绕序」（法线朝实体外部）。
+      // 旧版本全反了 —— 模型绕序朝内，法线方向相关的分析（悬垂）会整体带反。
       // 底面（朝 -z）
-      emit(solid, c[0], c[1], c[2]);
-      emit(solid, c[0], c[2], c[3]);
+      emit(solid, c[0], c[2], c[1]);
+      emit(solid, c[0], c[3], c[2]);
       // 顶面（朝 +z）
-      emit(solid, c[4], c[6], c[5]);
-      emit(solid, c[4], c[7], c[6]);
+      emit(solid, c[4], c[5], c[6]);
+      emit(solid, c[4], c[6], c[7]);
       // 前（-y，j 下沿）：相邻下侧像素为外部时
       if (j === 0 || !mask[(j - 1) * W + i]) {
-        emit(solid, c[0], c[4], c[5]);
-        emit(solid, c[0], c[5], c[1]);
+        emit(solid, c[0], c[5], c[4]);
+        emit(solid, c[0], c[1], c[5]);
       }
       // 右（+x，i 上沿）
       if (i === W - 1 || !mask[j * W + i + 1]) {
-        emit(solid, c[1], c[5], c[6]);
-        emit(solid, c[1], c[6], c[2]);
+        emit(solid, c[1], c[6], c[5]);
+        emit(solid, c[1], c[2], c[6]);
       }
       // 后（+y，j 上沿）
       if (j === H - 1 || !mask[(j + 1) * W + i]) {
-        emit(solid, c[2], c[6], c[7]);
-        emit(solid, c[2], c[7], c[3]);
+        emit(solid, c[2], c[7], c[6]);
+        emit(solid, c[2], c[3], c[7]);
       }
       // 左（-x，i 下沿）
       if (i === 0 || !mask[j * W + i - 1]) {
-        emit(solid, c[3], c[7], c[4]);
-        emit(solid, c[3], c[4], c[0]);
+        emit(solid, c[3], c[4], c[7]);
+        emit(solid, c[3], c[0], c[4]);
       }
     }
   }

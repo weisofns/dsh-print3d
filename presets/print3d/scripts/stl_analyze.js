@@ -41,20 +41,48 @@ function normalize(a) {
 }
 
 // ---------- 二进制 STL 解析 ----------
+// 二进制 STL 每条 facet 记录固定 50 字节：
+//   [0,12) 法线   [12,48) 三个顶点   [48,50) 属性字节数
+// 法线必须显式跳过；否则步长变成 38 字节，从第 2 个面起全部错位，读出的
+// 是随机 bit 模式（NaN/Inf），体积因此算出 NaN。
+const BINARY_FACET_SIZE = 50;
+
 function parseBinary(buf) {
+  if (buf.length < 84) fail('文件不足 84 字节，不是有效二进制 STL');
   const count = buf.readUInt32LE(80);
+  const need = 84 + count * BINARY_FACET_SIZE;
+  if (need > buf.length) {
+    fail('二进制 STL 声明 ' + count + ' 个三角面（需要 ' + need + ' 字节），文件只有 ' + buf.length + ' 字节，已截断');
+  }
   const triangles = [];
   let off = 84;
   for (let i = 0; i < count; i++) {
+    off += 12; // 跳过 facet normal（法线一律由顶点重算）
     const v = [];
     for (let k = 0; k < 3; k++) {
-      v.push([buf.readFloatLE(off), buf.readFloatLE(off + 4), buf.readFloatLE(off + 8)]);
+      const p = [buf.readFloatLE(off), buf.readFloatLE(off + 4), buf.readFloatLE(off + 8)];
+      if (!Number.isFinite(p[0]) || !Number.isFinite(p[1]) || !Number.isFinite(p[2])) {
+        fail('第 ' + (i + 1) + ' 个三角面的顶点含非有限值（NaN/Inf），STL 数据已损坏');
+      }
+      v.push(p);
       off += 12;
     }
     off += 2; // attribute byte count
     triangles.push(v);
   }
   return { format: 'binary', triangles };
+}
+
+// 二进制 / ASCII 判定：字节数是否恰好等于 84 + 50*面数（二进制 STL 的硬约束），
+// 比只看开头 5 字节是否 'solid' 可靠。
+function looksBinary(buf) {
+  if (buf.length < 84) return false;
+  const count = buf.readUInt32LE(80);
+  return buf.length === 84 + count * BINARY_FACET_SIZE;
+}
+
+function parseStlBuffer(buf) {
+  return looksBinary(buf) ? parseBinary(buf) : parseAscii(buf.toString('utf8'));
 }
 
 // ---------- ASCII STL 解析 ----------
@@ -159,12 +187,7 @@ function main() {
   const file = process.argv[2];
   if (!file) fail('用法: node stl_analyze.js <file.stl>');
   const buf = fs.readFileSync(file);
-  let parsed;
-  if (buf.length >= 84 && buf.toString('latin1', 0, 5).toLowerCase() === 'solid') {
-    parsed = parseAscii(buf.toString('utf8'));
-  } else {
-    parsed = parseBinary(buf);
-  }
+  const parsed = parseStlBuffer(buf);
   if (parsed.triangles.length === 0) fail('未解析到任何三角面（文件可能不是有效 STL）');
   const result = { file: path.basename(file), format: parsed.format, ...analyze(parsed.triangles) };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');

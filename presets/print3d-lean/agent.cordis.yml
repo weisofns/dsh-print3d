@@ -142,7 +142,7 @@
     allowParallelInProgress: true
 
 # ── 3D 打印工具集闸门 ────────────────────────────────────────────────────────
-# 本地小模型（8B 级）看不到全部 12 个 print3d 工具，只留「够用的一小撮」。
+# 本地小模型（8B 级）看不到全部 14 个 print3d 工具，只留「够用的一小撮」。
 # 用的是 DSH 的 ctx.tools.restrict：清单外的全局工具对本 preset 下的 agent
 # 直接不可见 —— 不是「禁止调用」，而是模型根本看不到，因此不会去瞎试。
 # 想放开某个工具就往 allow 里加名字；改成空数组则退回全量工具。
@@ -150,6 +150,7 @@
   name: 'dsh-print3d/gate'
   config:
     allow:
+      - print3d_diagnose_print
       - print3d_parametric_print
       - print3d_image_to_stl
       - print3d_views_to_model

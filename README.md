@@ -10,7 +10,7 @@
 
 ## 能力清单
 
-### 模型工具（11 个，注册到全局 tools 注册表）
+### 模型工具（14 个，注册到全局 tools 注册表）
 
 **建模 / 生成**
 
@@ -32,16 +32,19 @@
 
 | 工具 | 作用 | 输入 → 输出 |
 |---|---|---|
-| `print3d_stl_analyze` | STL 包围盒/体积/表面积/悬垂/非流形/水密性 | STL 文本 → JSON |
+| `print3d_stl_analyze` | STL 包围盒/体积/表面积/悬垂/非流形/水密性（法线朝向自动归一化，绕序朝内也判得对） | STL 文本 → JSON |
+| `print3d_printability_check` | 可打印性预检：悬垂分档、6 朝向择优、床尺寸、翻倒风险、层数与耗材 | STL 路径 → JSON |
 | `print3d_gcode_estimate` | G-code 打印时间/耗材/层数/温度序列估算 | G-code 文本 → JSON |
 | `print3d_gcode_render` | 刀路俯视图 PNG（原生图片块），支持 `output_path` | G-code 文本 → 图片块 / PNG 文件 |
 | `print3d_toolpath_map` | 刀路简图：四面板诊断图（俯视/侧视/首层/顶层 + 图例），供 Agent 自己检视切片结果 | G-code 路径/文本 → 图片块 + PNG |
 
-**视觉辅助**
+**诊断 / 视觉辅助 / 配置**
 
 | 工具 | 作用 | 输入 → 输出 |
 |---|---|---|
+| `print3d_diagnose_print` | 打印结果诊断：打印件照片（本机视觉模型）/ 文字症状 + 材料温度速度 → 按概率排序的疑因、证据、修复动作；可带 `gcode_path` 交叉核对实际参数 | 照片/症状/参数 → JSON |
 | `print3d_image_describe` | 借本机视觉模型（Ollama `qwen2.5vl`）描述图片，供无视觉能力的本地文本模型使用 | 图片 → 结构化文字 |
+| `print3d_printer_profile` | 打印机参数单一数据源（喷嘴/耗材/床/温度/速度/切片后端），切片与预检的默认值来源 | 读/写 → 配置 JSON |
 
 生成类工具（STL/G-code/PNG）**默认直接落盘**到 `桌面/3Doutput/`（分 `stl` / `gcode` / `preview` 目录）并返回路径，避免把大段文本塞进上下文（对本地小模型尤其重要）；`print3d_stl_analyze`/`print3d_gcode_estimate` 返回 JSON，`print3d_slice` 是唯一调用外部进程的工具。
 
@@ -55,7 +58,7 @@
 | 分析 | `print3d-analysis` | STL/G-code 指标判读、3MF 策略 |
 | 诊断 | `print3d-diagnosis` | 10 类打印故障「症状→原因→修复」 |
 
-### CLI 脚本（10 个，随包附带）
+### CLI 脚本（13 个，随包附带）
 
 `scripts/` 下的脚本仍可独立作为 CLI 使用（`node scripts/xxx.cjs ...`），是工具之外的兜底/高级路径，也用于「任意模型 → 文件」的落盘工作流。
 
@@ -69,6 +72,9 @@
 | `gcode_map.cjs` | 刀路简图（四面板诊断） |
 | `image_to_stl.cjs` | 图片 → STL（挤出/浮雕/凹字） |
 | `views_to_stl.cjs` | 三视图 → STL（视觉凸包 + 单图自动切分） |
+| `print_diagnosis.cjs` | 打印结果诊断引擎（缺陷关键字 + 材料参数窗口 → 排序疑因与修复） |
+| `printability.cjs` | 可打印性预检（悬垂分档 / 朝向择优 / 翻倒风险） |
+| `printer_profile.cjs` | 打印机参数读写（单一数据源） |
 | `ollama_vision.cjs` | 调本地 Ollama 视觉模型描述图片 |
 | `cura_slice.cjs` | CuraEngine 切片后端 |
 
@@ -124,10 +130,11 @@ dsh-print3d/
     index.js             # 插件入口：注册工具 + 技能 + persona
     skills.js            # 从 skills/ 读取并注册 5 个技能
     persona.js           # 精简 persona（systemPrompt 段，面向本地小模型）
-    tools/               # 6 个工具定义（一个能力一个文件）+ io.js 共享助手
-  scripts/               # 5 个零依赖 Node 脚本（.cjs，CLI + 进程内可调用）
+    tools/               # 14 个工具定义（一个能力一个文件）+ io.js 共享助手
+  scripts/               # 14 个零依赖 Node 脚本（.cjs，CLI + 进程内可调用）
   skills/                # 5 个 SKILL.md 知识包
   MODULES.md             # 如何按模块化新增能力
+  verify_print3d.mjs     # 自包含回归：解析/绕序/生成器/诊断（node verify_print3d.mjs）
 ```
 
 ## 如何扩展

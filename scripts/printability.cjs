@@ -15,16 +15,16 @@
 'use strict';
 
 const fs = require('node:fs');
-const { parseAscii, parseBinary } = require('./stl_analyze.cjs');
+const { parseStlBuffer, orientationSign } = require('./stl_analyze.cjs');
 
 function fail(m) { throw new Error('printability: ' + m); }
 
 function loadTriangles(file) {
   if (!file || !fs.existsSync(file)) fail('STL 不存在：' + file);
   const buf = fs.readFileSync(file);
-  const head = buf.subarray(0, 5).toString('ascii').toLowerCase();
-  if (head === 'solid') return parseAscii(buf.toString('utf8')).triangles;
-  return parseBinary(buf).triangles;
+  const parsed = parseStlBuffer(buf);
+  if (!parsed.triangles.length) fail('未解析到任何三角面：' + file);
+  return parsed.triangles;
 }
 
 function rotPoint([x, y, z], axis, deg) {
@@ -50,19 +50,9 @@ const applyOps = (p, ops) => ops.reduce((q, [ax, d]) => rotPoint(q, ax, d), p);
 const SEVERE = Math.cos((45 * Math.PI) / 180); // >0.707 → 与水平夹角<45°，必然要支撑
 const WARN = Math.cos((60 * Math.PI) / 180);   // >0.5   → 45~60°，通常也要
 
-// 有符号体积判断模型法线朝向：<0 表示绕序反转（法线朝内）。
-// 自造 STL 常见 inside-out —— 切片器能自动修复所以不影响打印，但任何依赖
-// 法线方向的分析（悬垂）会被整体带反，必须先归一化。
-function orientationSign(tris) {
-  let v6 = 0;
-  for (const [a, b, c] of tris) {
-    v6 += a[0] * (b[1] * c[2] - b[2] * c[1])
-        - a[1] * (b[0] * c[2] - b[2] * c[0])
-        + a[2] * (b[0] * c[1] - b[1] * c[0]);
-  }
-  return v6 < 0 ? -1 : 1; // -1 = 法线朝内，取反后才是真实的朝外法线
-}
-
+// 法线朝向归一化统一由 stl_analyze.orientationSign 提供（有符号体积，<0 表示
+// 绕序朝内）。自造 STL 常见 inside-out —— 切片器能自动修复所以不影响打印，但任何
+// 依赖法线方向的分析（悬垂）会被整体带反，必须先归一化。
 function evaluate(tris, ops, sign = 1) {
   // 第一趟：旋转全部顶点并求包围盒 —— 悬垂判定得先知道「床面在哪个 z」
   const rot = tris.map((tri) => [applyOps(tri[0], ops), applyOps(tri[1], ops), applyOps(tri[2], ops)]);
@@ -146,6 +136,9 @@ function check(tris, opts = {}) {
     volume += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6;
   }
   volume = Math.abs(volume);
+  // 顶点数据异常（NaN/Inf）时体积会变成 NaN，工具返回值就不是合法 JSON 了。
+  // 这里提前失败并给出可定位的错误，而不是把 NaN 一路传到序列化层。
+  if (!Number.isFinite(volume)) fail('体积算出非有限值，STL 顶点含 NaN/Inf，无法分析。');
 
   const layers = Math.max(1, Math.round(best.height / layerHeight));
   const filamentMM = volume > 0 ? volume / (Math.PI * (1.75 / 2) ** 2) : 0;

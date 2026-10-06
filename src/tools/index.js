@@ -11,6 +11,7 @@ import { makeViewsToModelTool } from './views-to-model.js'
 import { makeToolpathMapTool } from './toolpath-map.js'
 import { makePrinterProfileTool } from './printer-profile.js'
 import { makePrintabilityTool } from './printability.js'
+import { makeDiagnosePrintTool } from './diagnose-print.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -27,5 +28,6 @@ export function makeToolDefinitions(ctx) {
     makeToolpathMapTool(ctx),
     makePrinterProfileTool(ctx),
     makePrintabilityTool(ctx),
+    makeDiagnosePrintTool(ctx),
   ]
 }

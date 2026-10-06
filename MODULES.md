@@ -130,7 +130,8 @@ description: Use when <何时使用这个技能>。
 
 ## 已完成 / 未来可做
 
-已落地（v0.1）：`output_path` 落盘、`gcode_render` 原生图片块、`print3d_slice` PrusaSlicer 桥接。
+已落地（v0.1）：`output_path` 落盘、`gcode_render` 原生图片块、`print3d_slice` PrusaSlicer 桥接、
+可打印性预检（`printability.cjs`）、打印结果诊断（`print_diagnosis.cjs`）、法线朝向归一化。
 
 后续可做：
 - 给 `print3d_slice` 增加「按本机机型 + 耗材的 PrusaSlicer 配置包」记忆，一键复用。
