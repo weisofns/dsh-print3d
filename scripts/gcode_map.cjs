@@ -176,36 +176,54 @@ function drawLegend(cv, W, y, h) {
 // ---------- 侧视轮廓：每层一条 X 跨度线，Z 方向铺满面板 ----------
 function drawSideProfile(cv, rect, segs, layers, b) {
   const pad = Math.round(rect.w * 0.035);
-  const padTop = 54; // 给面板标题留位置，否则层线会压在标题上
-  const iw = Math.max(1, rect.w - pad * 2), ih = Math.max(1, rect.h - padTop - pad);
+  const padTop = 54;   // 给面板标题留位置，否则层线会压在标题上
+  const legendH = 20;  // 面板内小图例
+  const iw = Math.max(1, rect.w - pad * 2);
+  const ih = Math.max(1, rect.h - padTop - pad - legendH);
   const sx = Math.max(1e-6, b.maxX - b.minX);
+  const sy = Math.max(1e-6, b.maxY - b.minY);
+  const spanMax = Math.max(sx, sy);
   const ox = rect.x + pad + iw * 0.05;
-  const scaleX = (iw * 0.9) / sx;
+  const scale = (iw * 0.9) / spanMax;
   const rowH = ih / Math.max(1, layers.length);
-  let prevSpan = null;
+  let prevX = null, prevY = null;
+
   for (let li = 0; li < layers.length; li++) {
     const L = layers[li];
-    let lminX = Infinity, lmaxX = -Infinity, has = false;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, has = false;
     for (let i = L.start; i < L.end; i++) {
       const s = segs[i];
       if (!s.ext) continue;
       has = true;
-      lminX = Math.min(lminX, s.x1, s.x2);
-      lmaxX = Math.max(lmaxX, s.x1, s.x2);
+      x0 = Math.min(x0, s.x1, s.x2); x1 = Math.max(x1, s.x1, s.x2);
+      y0 = Math.min(y0, s.y1, s.y2); y1 = Math.max(y1, s.y1, s.y2);
     }
     if (!has) continue;
     const y = Math.round(rect.y + padTop + ih - (li + 0.5) * rowH);
-    const x0 = ox + (lminX - b.minX) * scaleX;
-    const x1 = ox + (lmaxX - b.minX) * scaleX;
-    const grow = prevSpan === null ? 0 : (lmaxX - lminX) - prevSpan;
-    const over = grow > Math.max(2, sx * 0.08);
-    cv.line(x0, y, x1, y, over ? [255, 140, 30] : [110, 145, 200]);
-    prevSpan = lmaxX - lminX;
+    const px0 = ox + (x0 - b.minX) * scale, px1 = ox + (x1 - b.minX) * scale;
+    const py0 = ox + (y0 - b.minY) * scale, py1 = ox + (y1 - b.minY) * scale;
+    // 悬垂判据：本层比下层明显外扩（X 或 Y 任一方向）—— 收腰/大象腿也会显出跨度变化
+    const growX = prevX === null ? 0 : (x1 - x0) - prevX;
+    const growY = prevY === null ? 0 : (y1 - y0) - prevY;
+    const over = growX > Math.max(2, sx * 0.08) || growY > Math.max(2, sy * 0.08);
+    cv.line(px0, y, px1, y, over ? [255, 140, 30] : [110, 145, 200]); // X 跨度
+    cv.line(py0, y + 1, py1, y + 1, [186, 202, 224]);                 // Y 跨度
+    prevX = x1 - x0;
+    prevY = y1 - y0;
   }
+
   // 零件 X 范围的两条竖直参考线
-  const gx0 = Math.round(ox), gx1 = Math.round(ox + sx * scaleX);
-  cv.line(gx0, rect.y + padTop, gx0, rect.y + rect.h - pad, [233, 236, 239]);
-  cv.line(gx1, rect.y + padTop, gx1, rect.y + rect.h - pad, [233, 236, 239]);
+  const gx0 = Math.round(ox), gx1 = Math.round(ox + sx * scale);
+  const gTop = rect.y + padTop, gBot = rect.y + rect.h - pad - legendH;
+  cv.line(gx0, gTop, gx0, gBot, [233, 236, 239]);
+  cv.line(gx1, gTop, gx1, gBot, [233, 236, 239]);
+
+  // 面板内小图例：区分两条曲线，让图脱离上下文也能读懂
+  const ly = rect.y + rect.h - pad - legendH + 5;
+  cv.fill(rect.x + pad, ly, 8, 8, [110, 145, 200]);
+  drawText(cv, rect.x + pad + 12, ly + 1, 'X SPAN', [110, 114, 122], 1);
+  cv.fill(rect.x + pad + 84, ly, 8, 8, [186, 202, 224]);
+  drawText(cv, rect.x + pad + 96, ly + 1, 'Y SPAN', [110, 114, 122], 1);
 }
 
 // ---------- 主入口 ----------

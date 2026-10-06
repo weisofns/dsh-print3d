@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { writeToCategory, OUTPUT_ROOT } from './io.js'
-import { sliceStl, withProfile } from './slice.js'
+import { sliceStl, withProfile, attachToolpathMap } from './slice.js'
 
 const require = createRequire(import.meta.url)
 const { generate } = require('../../scripts/gen_parametric_stl.cjs')
@@ -50,12 +50,22 @@ export function makeParametricPrintTool(_ctx) {
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        const backend = value.slicer === 'cura' ? 'CuraEngine' : (value.configUsed === 'custom' ? 'PrusaSlicer 自定义配置' : 'PrusaSlicer 默认配置（通用 PLA）')
-        return [{ type: 'text', text: `已生成并切片 ${value.shape}（${backend}）：STL → ${value.stlPath}；G-code → ${value.gcodePath}` }]
+        const blocks = []
+        if (value.mapRef) blocks.push({ type: 'image', attachment: value.mapRef })
+        const backend = value.slicer === 'cura' ? 'CuraEngine'
+          : value.configUsed === 'custom' ? 'PrusaSlicer 自定义配置'
+          : value.configUsed === 'profile' ? 'PrusaSlicer + 打印机配置'
+          : 'PrusaSlicer 默认配置（通用 PLA）'
+        const lines = [`已生成并切片 ${value.shape}（${backend}）：STL → ${value.stlPath}；G-code → ${value.gcodePath}`]
+        if (value.mapSummary) lines.push(value.mapSummary)
+        if (value.mapPath) lines.push(`简图 PNG：${value.mapPath}`)
+        if (value.mapError) lines.push(`（简图生成失败，不影响切片：${value.mapError}）`)
+        blocks.push({ type: 'text', text: lines.join('\n') })
+        return blocks
       },
     },
     async execute(args) {
-      const { slicer, cura_engine, prusa_slicer, filament_diameter, layer_height, nozzle, infill, nozzle_temp, bed_temp, speed, brim_mm, ...shapeArgs } = args
+      const { slicer, cura_engine, prusa_slicer, filament_diameter, layer_height, nozzle, infill, nozzle_temp, bed_temp, speed, brim_mm, attach_map, map_size, ...shapeArgs } = args
       const result = generate(shapeArgs)
       const stlPath = writeToCategory('stl', `${result.shape}.stl`, result.stl)
       const gcodePath = join(OUTPUT_ROOT, 'gcode', `${result.shape}.gcode`)
@@ -63,12 +73,14 @@ export function makeParametricPrintTool(_ctx) {
         slicer, cura_engine, filament_diameter, layer_height, nozzle,
         infill, nozzle_temp, bed_temp, speed, brim_mm,
       }))
+      const map = await attachToolpathMap(_ctx, sliced.outputPath, { attach_map, map_size })
       return {
         shape: result.shape,
         stlPath,
         gcodePath: sliced.outputPath,
         configUsed: sliced.configUsed,
         slicer: sliced.slicer,
+        ...map,
       }
     },
   }

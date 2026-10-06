@@ -1,13 +1,42 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { createRequire } from 'node:module'
-import { resolveOutputPath, sessionCwd, OUTPUT_ROOT } from './io.js'
+import { resolveOutputPath, sessionCwd, OUTPUT_ROOT, writeBinaryToCategory } from './io.js'
 
 const require = createRequire(import.meta.url)
 const { sliceWithCura, findCuraEngine } = require('../../scripts/cura_slice.cjs')
 const { loadProfile } = require('../../scripts/printer_profile.cjs')
+const { buildToolpathMap } = require('../../scripts/gcode_map.cjs')
+
+// 切片完成后自动生成刀路简图并附成原生图片块。
+// 目的：让「切片 → 自检」成为默认动作，而不是每次都要 agent 记得手动调
+// print3d_toolpath_map。失败不影响切片本身（只记 mapError）。
+export async function attachToolpathMap(ctx, gcodePath, opts = {}) {
+  if (opts.attach_map === false) return {}
+  try {
+    const text = readFileSync(gcodePath, 'utf8')
+    const r = buildToolpathMap(text, { size: opts.map_size })
+    const bytes = r.png
+    const mapPath = writeBinaryToCategory('preview', `map-${Date.now()}.png`, bytes)
+    const out = {
+      mapPath,
+      mapSummary: `刀路简图 ${r.image}：${r.stats.layers} 层（${r.stats.layerHeights}）· 段 ${r.stats.segments}（挤出 ${r.stats.extrusionSegments} / 空驶 ${r.stats.travelSegments}）· 疑似悬垂层 ${r.stats.overhangLayers}`,
+    }
+    const attachments = ctx.get('attachments')
+    if (attachments !== undefined) {
+      try {
+        out.mapRef = await attachments.saveImage({ data: bytes, mediaType: 'image/png', name: 'toolpath-map.png' })
+      } catch (_) {
+        // 附件存储不可用时只返回路径
+      }
+    }
+    return out
+  } catch (err) {
+    return { mapError: String((err && err.message) || err).slice(0, 200) }
+  }
+}
 
 // 参数优先级：工具入参 > 打印机配置文件（%USERPROFILE%\.print3d\printer.json）> 后端内置默认。
 // 配置文件由窗口程序 tools\printer-setup.bat 可视化编辑。
@@ -167,11 +196,18 @@ export function makeSliceTool(ctx) {
     output: {
       schema: { type: 'object' },
       render(_args, value) {
-        if (value.slicer === 'cura') {
-          return [{ type: 'text', text: `切片完成（CuraEngine 15.04 风格参数）→ ${value.outputPath}` }]
-        }
-        const conf = value.configUsed === 'custom' ? '自定义配置包' : 'PrusaSlicer 默认配置（通用 PLA）'
-        return [{ type: 'text', text: `切片完成（${conf}）→ ${value.outputPath}` }]
+        const blocks = []
+        if (value.mapRef) blocks.push({ type: 'image', attachment: value.mapRef })
+        const conf = value.slicer === 'cura' ? 'CuraEngine 15.04 风格参数'
+          : value.configUsed === 'custom' ? '自定义配置包'
+          : value.configUsed === 'profile' ? '打印机配置（printer.json）'
+          : 'PrusaSlicer 默认配置（通用 PLA）'
+        const lines = [`切片完成（${conf}）→ ${value.outputPath}`]
+        if (value.mapSummary) lines.push(value.mapSummary)
+        if (value.mapPath) lines.push(`简图 PNG：${value.mapPath}`)
+        if (value.mapError) lines.push(`（简图生成失败，不影响切片：${value.mapError}）`)
+        blocks.push({ type: 'text', text: lines.join('\n') })
+        return blocks
       },
     },
     async execute(args, exec) {
@@ -185,7 +221,8 @@ export function makeSliceTool(ctx) {
       const { stl_path, output_path, config_path, ...opts } = args
       const resolved = withProfile(opts)
       const sliced = await sliceStl(stlAbs, outAbs, configAbs, resolved.prusa_slicer, resolved)
-      return { ok: true, stlPath: stlAbs, ...sliced }
+      const map = await attachToolpathMap(ctx, sliced.outputPath, args)
+      return { ok: true, stlPath: stlAbs, ...sliced, ...map }
     },
   }
 }
