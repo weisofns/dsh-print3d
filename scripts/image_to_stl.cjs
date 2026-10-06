@@ -48,12 +48,17 @@ const num = (v, dflt, min, label) => {
 };
 
 // ---------- sharp 加载（可选，用于 JPEG/WebP 等） ----------
+// DSH 0.8 起把 app 目录打包成 app.asar，因此同时尝试 app.asar 与旧的 app 目录。
 function loadSharp() {
   const dirs = [];
-  if (typeof process.resourcesPath === 'string' && process.resourcesPath) {
-    dirs.push(path.join(process.resourcesPath, 'app'));
+  const res = typeof process.resourcesPath === 'string' ? process.resourcesPath : null;
+  if (res) {
+    dirs.push(path.join(res, 'app.asar'));
+    dirs.push(path.join(res, 'app'));
   }
+  dirs.push('C:/Program Files/DSH Desktop/resources/app.asar');
   dirs.push('C:/Program Files/DSH Desktop/resources/app');
+  dirs.push('C:/Program Files (x86)/DSH Desktop/resources/app.asar');
   dirs.push('C:/Program Files (x86)/DSH Desktop/resources/app');
   for (const dir of dirs) {
     try {

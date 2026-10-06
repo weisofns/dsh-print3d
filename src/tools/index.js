@@ -8,6 +8,7 @@ import { makeParametricPrintTool } from './parametric-print.js'
 import { makeImageToStlTool } from './image-to-stl.js'
 import { makeVisionDescribeTool } from './vision-describe.js'
 import { makeViewsToModelTool } from './views-to-model.js'
+import { makeToolpathMapTool } from './toolpath-map.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -21,5 +22,6 @@ export function makeToolDefinitions(ctx) {
     makeImageToStlTool(ctx),
     makeVisionDescribeTool(ctx),
     makeViewsToModelTool(ctx),
+    makeToolpathMapTool(ctx),
   ]
 }
