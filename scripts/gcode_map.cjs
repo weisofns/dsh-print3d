@@ -19,6 +19,15 @@
 
 const fs = require('node:fs');
 const { parseGcode, pngEncode, colorFor } = require('./gcode_render.cjs');
+const { drawText, textWidth } = require('./bitmap_font.cjs');
+
+// 面板标题：英文标签 + 5×7 点阵字，让图脱离解释也能独立读懂
+const PANEL_TITLES = {
+  overview: 'TOP VIEW',
+  side: 'SIDE PROFILE',
+  first: 'FIRST LAYER',
+  top: 'TOP LAYER',
+};
 
 function fail(msg) { throw new Error('gcode_map: ' + msg); }
 
@@ -142,30 +151,33 @@ function makeProjector(rect, proj, b) {
 
 // ---------- 图例 ----------
 const LEGEND = [
-  ['外墙/内壁', [232, 60, 50]],
-  ['内部填充', [50, 120, 220]],
-  ['实心/顶面/桥', [40, 180, 90]],
-  ['裙边/底边', [255, 150, 40]],
-  ['支撑', [172, 92, 220]],
-  ['空驶', [222, 222, 226]],
+  ['外墙/内壁', [232, 60, 50], 'WALL'],
+  ['内部填充', [50, 120, 220], 'FILL'],
+  ['实心/顶面/桥', [40, 180, 90], 'SKIN'],
+  ['裙边/底边', [255, 150, 40], 'SKIRT'],
+  ['支撑', [172, 92, 220], 'SUPPORT'],
+  ['空驶', [222, 222, 226], 'TRAVEL'],
 ];
 
 function drawLegend(cv, W, y, h) {
   const n = LEGEND.length;
   const gapx = W / n;
-  const s = Math.min(18, Math.round(h * 0.55));
+  const s = Math.min(16, Math.round(h * 0.5));
   const sy = y + Math.round((h - s) / 2);
   for (let i = 0; i < n; i++) {
-    const x = Math.round(gapx * i + gapx / 2 - s / 2);
+    const x = Math.round(gapx * i + gapx * 0.1);
     cv.fill(x, sy, s, s, LEGEND[i][1]);
     cv.stroke(x, sy, s, s, [170, 175, 182]);
+    // 色块右侧配字母标签，图脱离上下文也能读懂
+    drawText(cv, x + s + 6, sy + Math.round((s - 7) / 2), LEGEND[i][2] || '', [110, 114, 122], 1);
   }
 }
 
 // ---------- 侧视轮廓：每层一条 X 跨度线，Z 方向铺满面板 ----------
 function drawSideProfile(cv, rect, segs, layers, b) {
   const pad = Math.round(rect.w * 0.035);
-  const iw = Math.max(1, rect.w - pad * 2), ih = Math.max(1, rect.h - pad * 2);
+  const padTop = 54; // 给面板标题留位置，否则层线会压在标题上
+  const iw = Math.max(1, rect.w - pad * 2), ih = Math.max(1, rect.h - padTop - pad);
   const sx = Math.max(1e-6, b.maxX - b.minX);
   const ox = rect.x + pad + iw * 0.05;
   const scaleX = (iw * 0.9) / sx;
@@ -182,7 +194,7 @@ function drawSideProfile(cv, rect, segs, layers, b) {
       lmaxX = Math.max(lmaxX, s.x1, s.x2);
     }
     if (!has) continue;
-    const y = Math.round(rect.y + pad + ih - (li + 0.5) * rowH);
+    const y = Math.round(rect.y + padTop + ih - (li + 0.5) * rowH);
     const x0 = ox + (lminX - b.minX) * scaleX;
     const x1 = ox + (lmaxX - b.minX) * scaleX;
     const grow = prevSpan === null ? 0 : (lmaxX - lminX) - prevSpan;
@@ -192,8 +204,8 @@ function drawSideProfile(cv, rect, segs, layers, b) {
   }
   // 零件 X 范围的两条竖直参考线
   const gx0 = Math.round(ox), gx1 = Math.round(ox + sx * scaleX);
-  cv.line(gx0, rect.y + pad, gx0, rect.y + rect.h - pad, [233, 236, 239]);
-  cv.line(gx1, rect.y + pad, gx1, rect.y + rect.h - pad, [233, 236, 239]);
+  cv.line(gx0, rect.y + padTop, gx0, rect.y + rect.h - pad, [233, 236, 239]);
+  cv.line(gx1, rect.y + padTop, gx1, rect.y + rect.h - pad, [233, 236, 239]);
 }
 
 // ---------- 主入口 ----------
@@ -241,6 +253,7 @@ function buildToolpathMap(text, opts = {}) {
     cv.fill(rect.x, rect.y, rect.w, rect.h, [255, 255, 255]);
     cv.stroke(rect.x, rect.y, rect.w, rect.h, frame);
     drawNumber(cv, rect.x + 9, rect.y + 9, panels[p].index, mark, 3);
+    drawText(cv, rect.x + 9, rect.y + 32, PANEL_TITLES[panels[p].key] || panels[p].key, mark, 2);
 
     if (panels[p].key === 'side') {
       drawSideProfile(cv, rect, segs, layers, bounds);
