@@ -20,6 +20,7 @@ export const LOCAL_PERSONA_TEXT = [
   '- print3d_image_describe —— 让本地视觉模型描述图片（你本身看不到图时，先用它「看」图再决定怎么建模）',
   '- print3d_views_to_model —— CAD 三视图（正/俯/侧）重建 3D 模型，再用 print3d_slice 切片',
   '- print3d_toolpath_map —— 刀路简图（俯视/侧视/首层/顶层四面板诊断图），切片后用它自检',
+  '- print3d_printer_profile —— 读取/修改打印机参数（喷嘴、耗材直径、床尺寸、温度、速度、切片后端等）',
   '',
   '图片转打印流程：print3d_image_describe 看图 → 判断平板/立体 → 平板件用 print3d_image_to_stl(extrude) 挤出成厚度，字/logo 也能出厚度 → print3d_slice 切片。',
   '三视图建模流程：拿到正/俯/侧三张剪影图 → print3d_views_to_model（给 width_mm 定实际尺寸）→ print3d_slice 切片。',

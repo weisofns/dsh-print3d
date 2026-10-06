@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { writeToCategory, OUTPUT_ROOT } from './io.js'
-import { sliceStl } from './slice.js'
+import { sliceStl, withProfile } from './slice.js'
 
 const require = createRequire(import.meta.url)
 const { generate } = require('../../scripts/gen_parametric_stl.cjs')
@@ -59,10 +59,10 @@ export function makeParametricPrintTool(_ctx) {
       const result = generate(shapeArgs)
       const stlPath = writeToCategory('stl', `${result.shape}.stl`, result.stl)
       const gcodePath = join(OUTPUT_ROOT, 'gcode', `${result.shape}.gcode`)
-      const sliced = await sliceStl(stlPath, gcodePath, undefined, prusa_slicer, {
+      const sliced = await sliceStl(stlPath, gcodePath, undefined, prusa_slicer, withProfile({
         slicer, cura_engine, filament_diameter, layer_height, nozzle,
         infill, nozzle_temp, bed_temp, speed, brim_mm,
-      })
+      }))
       return {
         shape: result.shape,
         stlPath,

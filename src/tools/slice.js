@@ -7,6 +7,32 @@ import { resolveOutputPath, sessionCwd, OUTPUT_ROOT } from './io.js'
 
 const require = createRequire(import.meta.url)
 const { sliceWithCura, findCuraEngine } = require('../../scripts/cura_slice.cjs')
+const { loadProfile } = require('../../scripts/printer_profile.cjs')
+
+// 参数优先级：工具入参 > 打印机配置文件（%USERPROFILE%\.print3d\printer.json）> 后端内置默认。
+// 配置文件由窗口程序 tools\printer-setup.bat 可视化编辑。
+export function withProfile(opts = {}) {
+  const p = loadProfile()
+  const pick = (v, fallback) => (v === undefined || v === null || v === '' ? fallback : v)
+  return {
+    ...opts,
+    slicer: pick(opts.slicer, p.slicer),
+    layer_height: pick(opts.layer_height, p.layer_height),
+    first_layer_height: pick(opts.first_layer_height, p.first_layer_height),
+    filament_diameter: pick(opts.filament_diameter, p.filament_diameter),
+    nozzle: pick(opts.nozzle, p.nozzle),
+    infill: pick(opts.infill, p.infill),
+    nozzle_temp: pick(opts.nozzle_temp, p.nozzle_temp),
+    bed_temp: pick(opts.bed_temp, p.bed_temp),
+    speed: pick(opts.speed, p.speed),
+    travel_speed: pick(opts.travel_speed, p.travel_speed),
+    walls: pick(opts.walls, p.walls),
+    top_bottom_layers: pick(opts.top_bottom_layers, p.top_bottom_layers),
+    brim_mm: pick(opts.brim_mm, p.brim_mm),
+    cura_engine: pick(opts.cura_engine, p.cura_engine_path || undefined),
+    prusa_slicer: pick(opts.prusa_slicer, p.prusa_slicer_path || undefined),
+  }
+}
 
 const execFileAsync = promisify(execFile)
 
@@ -137,7 +163,8 @@ export function makeSliceTool(ctx) {
         : join(OUTPUT_ROOT, 'gcode', basename(stlAbs).replace(/\.stl$/i, '.gcode'))
       const configAbs = args.config_path ? resolveOutputPath(args.config_path, cwd) : undefined
       const { stl_path, output_path, config_path, ...opts } = args
-      const sliced = await sliceStl(stlAbs, outAbs, configAbs, args.prusa_slicer, opts)
+      const resolved = withProfile(opts)
+      const sliced = await sliceStl(stlAbs, outAbs, configAbs, resolved.prusa_slicer, resolved)
       return { ok: true, stlPath: stlAbs, ...sliced }
     },
   }

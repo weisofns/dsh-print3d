@@ -9,6 +9,7 @@ import { makeImageToStlTool } from './image-to-stl.js'
 import { makeVisionDescribeTool } from './vision-describe.js'
 import { makeViewsToModelTool } from './views-to-model.js'
 import { makeToolpathMapTool } from './toolpath-map.js'
+import { makePrinterProfileTool } from './printer-profile.js'
 
 export function makeToolDefinitions(ctx) {
   return [
@@ -23,5 +24,6 @@ export function makeToolDefinitions(ctx) {
     makeVisionDescribeTool(ctx),
     makeViewsToModelTool(ctx),
     makeToolpathMapTool(ctx),
+    makePrinterProfileTool(ctx),
   ]
 }
