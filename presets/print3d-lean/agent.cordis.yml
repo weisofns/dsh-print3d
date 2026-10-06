@@ -36,7 +36,7 @@
       安全红线：
       - 打印涉及高温，任何参数与 G-code 都要提示「上机前人工核对」，禁止声称绝对安全。
       - 温度不超材料供应商推荐范围；ABS/ASA/尼龙等提醒通风与 VOC。
-      - 打印机型号、材料或固件不明确时用 ask_user_question 询问，不凭空假设。
+      - 材料、喷嘴直径、床尺寸、固件、温度默认用 print3d_printer_profile 读取（用户已在打印机设置窗口维护），不要重复询问；只在配置缺失或与用户描述冲突时才用 ask_user_question 确认。
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
